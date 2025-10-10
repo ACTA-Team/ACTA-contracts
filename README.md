@@ -1,12 +1,12 @@
 # ACTA Smart Contracts
 
-Emisión, almacenamiento y verificación de credenciales verificables (VC) sobre Soroban.
+Issuance, storage, and verification of Verifiable Credentials (VC) on Soroban.
 
-Este monorepo contiene los contratos ACTA:
-- `ACTA Issuance`: emisión, verificación y revocación de VCs.
-- `ACTA Vault`: almacenamiento cifrado y autorización de emisores.
-- `Deployer`: despliegue atómico de contratos y su inicialización.
-- `DID` (opcional): contrato DID W3C (se compila/instala por separado).
+This monorepo contains the ACTA contracts:
+- `ACTA Issuance`: issue, verify, and revoke VCs.
+- `ACTA Vault`: encrypted storage and issuer authorization.
+- `Deployer`: atomic deployment of contracts and initialization.
+- `DID` (optional): W3C DID contract (built/deployed separately).
 
 ## Build
 
@@ -22,18 +22,18 @@ chmod +x release.sh
 sh release.sh
 ```
 
-El script imprime los WASM IDs y la dirección del Deployer.
+The script prints the WASM IDs and the Deployer address.
 
 ## Deployed Contract IDs (Testnet)
 
-- Issuance: `CC5VJEF2D56G5C3JL6JKGS5T3NNHTE7LCLSK26CMX55P55F3GP365KN6`
-  - Explorer: https://stellar.expert/explorer/testnet/contract/CC5VJEF2D56G5C3JL6JKGS5T3NNHTE7LCLSK26CMX55P55F3GP365KN6
-- Vault: `CCC3DH5D3P2VP2OXCFYSC25E6I7SKHKPH3GLISJIR3IMZ3W2STKTESIE`
-  - Explorer: https://stellar.expert/explorer/testnet/contract/CCC3DH5D3P2VP2OXCFYSC25E6I7SKHKPH3GLISJIR3IMZ3W2STKTESIE
-- DID: `CBD2UKHTCYDHDGKLFZ47NOFXSFVTWBA6GADR5EYHPIHGXBW6RKOGTB4V`
-  - Explorer: https://stellar.expert/explorer/testnet/contract/CBD2UKHTCYDHDGKLFZ47NOFXSFVTWBA6GADR5EYHPIHGXBW6RKOGTB4V
-- Deployer: `CDIBXZUIZBQG7IMFFCMTSIKTL6JCPSVENHHZQ6CUXD5E26WNF6PVVQLK`
-  - Explorer: https://stellar.expert/explorer/testnet/contract/CDIBXZUIZBQG7IMFFCMTSIKTL6JCPSVENHHZQ6CUXD5E26WNF6PVVQLK
+- Issuance: `CAULJ65QZR4FCHAZGBUHMDACT7PODYIE54HGGOQWJRQFATAJ4U2HOUQK`
+  - Explorer: https://stellar.expert/explorer/testnet/contract/CAULJ65QZR4FCHAZGBUHMDACT7PODYIE54HGGOQWJRQFATAJ4U2HOUQK
+- Vault: `CCDAKJJROTWOEQS42TULG23YSM2OLGFKK43OQ3FRL6TQWQCC3QX4EUDH`
+  - Explorer: https://stellar.expert/explorer/testnet/contract/CCDAKJJROTWOEQS42TULG23YSM2OLGFKK43OQ3FRL6TQWQCC3QX4EUDH
+- DID: `CCXFRDE7NJS3X2DQGDMEL7AQPZ5KPEOPA5MYSKIS2SB2UVDGZLXATJSJ`
+  - Explorer: https://stellar.expert/explorer/testnet/contract/CCXFRDE7NJS3X2DQGDMEL7AQPZ5KPEOPA5MYSKIS2SB2UVDGZLXATJSJ
+- Deployer: `CDSZBXTZQ6LHD2O5LKERPOXU226VE3IMYFGHAZGDGOSY3MU4SQHIIY5Y`
+  - Explorer: https://stellar.expert/explorer/testnet/contract/CDSZBXTZQ6LHD2O5LKERPOXU226VE3IMYFGHAZGDGOSY3MU4SQHIIY5Y
 
-## Licencia
-Este software está licenciado bajo [Apache License 2.0](./LICENSE).
+## License
+This software is licensed under the [Apache License 2.0](./LICENSE).
