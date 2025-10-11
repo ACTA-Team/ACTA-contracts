@@ -11,7 +11,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 contractmeta!(
     key = "Description",
-    val = "ACTA VC Issuance smart contract",
+    val = "Smart Contract to issue, transfer, verify, and revoke Verifiable Credentials (VCs).",
 );
 
 #[allow(dead_code)]

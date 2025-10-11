@@ -49,7 +49,7 @@ pub fn get_vc_setup(env: &Env) -> VCVaultContractTest {
     let vc_id = String::from_str(env, "vc_id");
     let vc_data = String::from_str(env, "vc_data");
     let issuance_contract_address = Address::generate(env);
-    let issuer_did = String::from_str(env, "did:acta:7dotwpyzo2weqj6oto6liic6");
+    let issuer_did = String::from_str(env, "did:chaincerts:7dotwpyzo2weqj6oto6liic6");
 
     VCVaultContractTest {
         vc_id,
@@ -81,13 +81,13 @@ pub fn did_init_args(e: &Env, admin: &Address) -> Vec<Val> {
     let services: Vec<Service> = vec![
         &e,
         Service {
-            id: String::from_str(e, "acta"),
+            id: String::from_str(e, "chaincerts"),
             type_: ServiceType::LinkedDomains,
-            service_endpoint: String::from_str(e, "https://acta.example"),
+            service_endpoint: String::from_str(e, "https://chaincerts.co"),
         },
     ];
 
-    let did_method = String::from_str(e, "acta");
+    let did_method = String::from_str(e, "chaincerts");
     vec![
         e,
         Val::from_val(e, &admin),

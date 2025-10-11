@@ -35,7 +35,7 @@ impl<'a> VCIssuanceContractTest<'a> {
             VCIssuanceContractClient::new(&env, &env.register_contract(None, VCIssuanceContract));
         let vc_id = String::from_str(&env, "iwvkdjquj3fscmafrgeeqblw");
         let vc_data = String::from_str(&env, "eoZXggNeVDW2g5GeA0G2s0QJBn3SZWzWSE3fXM9V6IB5wWIfFJRxPrTLQRMHulCF62bVQNmZkj7zbSa39fVjAUTtfm6JMio75uMxoDlAN/Y");
-    let issuer_did = String::from_str(&env, "did:acta:7dotwpyzo2weqj6oto6liic6");
+        let issuer_did = String::from_str(&env, "did:chaincerts:7dotwpyzo2weqj6oto6liic6");
 
         VCIssuanceContractTest {
             env,
@@ -106,9 +106,9 @@ fn build_did_init_args(e: &Env, admin: &Address) -> Vec<Val> {
     let services: Vec<Service> = vec![
         &e,
         Service {
-            id: String::from_str(e, "acta"),
+            id: String::from_str(e, "chaincerts"),
             type_: ServiceType::LinkedDomains,
-            service_endpoint: String::from_str(e, "https://acta.example"),
+            service_endpoint: String::from_str(e, "https://chaincerts.co"),
         },
     ];
 
@@ -119,7 +119,7 @@ fn build_did_init_args(e: &Env, admin: &Address) -> Vec<Val> {
         String::from_str(e, "https://w3id.org/security/suites/x25519-2020/v1"),
     ];
 
-    let did_method = String::from_str(e, "acta");
+    let did_method = String::from_str(e, "chaincerts");
     vec![
         e,
         Val::from_val(e, &admin),
