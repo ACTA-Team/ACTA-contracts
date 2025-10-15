@@ -3,6 +3,7 @@
 Issues, verifies, and revokes Verifiable Credentials (VCs) on Soroban.
 
 ## Testnet Contract ID
+Note: Example ID — replace with your own deployment.
 - `CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
 
 ## Features

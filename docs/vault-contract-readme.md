@@ -4,6 +4,8 @@ This document describes each public function of the `acta_vault_contract`, the a
 
 **Testnet Vault Contract ID**
 
+Note: Example ID — replace with your own deployment.
+
 - `CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF`
 
 ## Key Concepts

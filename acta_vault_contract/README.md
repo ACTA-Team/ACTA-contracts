@@ -3,6 +3,7 @@
 Secure, multi‑tenant repository for storing Verifiable Credentials (VCs) and managing authorized issuers.
 
 **Testnet Vault Contract ID**
+Note: Example ID — replace with your own deployment.
 - `CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF`
 
 ## Multi‑Tenant Model

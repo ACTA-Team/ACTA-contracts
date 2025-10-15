@@ -16,7 +16,7 @@ This document describes how the ACTA smart contracts integrate with W3C standard
 
 ## DID (W3C DID Core)
 
-The `VaultContract` initializes and maintains DID-related metadata por bóveda/`owner`:
+The `VaultContract` initializes and maintains DID-related metadata per vault/`owner`:
 
 - During `initialize(owner, did_uri)`, the contract:
   - Sets an `admin` address for that vault (controller/owner).
@@ -35,7 +35,7 @@ The `VaultContract` initializes and maintains DID-related metadata por bóveda/`
 
 Notes:
 - The vault does not deploy a DID contract; DID resolution is expected off-chain via the stored DID URI.
-- Authentication for administrative operations is enforced per bóveda (`admin.require_auth()`), aligning with DID controller authorization semantics.
+- Authentication for administrative operations is enforced per vault (`admin.require_auth()`), aligning with DID controller authorization semantics.
 
 ## Verifiable Credentials (W3C VC)
 
