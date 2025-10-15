@@ -6,8 +6,8 @@ This document describes how the ACTA smart contracts integrate with W3C standard
 
 - The ACTA contract suite includes:
   - `VCIssuanceContract` — issues and manages VC status (valid/invalid/revoked) and exposes `issue`, `verify`, and `revoke` operations.
-- `VaultContract` — stores VC data by ID, enforces issuer authorization, and holds DID metadata for the vault owner.
-  - (Optional off-chain DID resolution) — the vault stores a DID URI string and does not deploy a DID contract.
+- `VaultContract` — multi-tenant vault that stores VC data by ID per `owner`, enforces issuer authorization per `owner`, and holds DID metadata for each vault owner.
+  - (Optional off-chain DID resolution) — the vault stores a DID URI string only; it does not deploy nor persist a DID contract.
 
 - The design is aligned with W3C DID Core (v1.0) and W3C Verifiable Credentials Data Model (v1.1) concepts:
   - DID Document fields (verification methods, services, context).
@@ -16,11 +16,11 @@ This document describes how the ACTA smart contracts integrate with W3C standard
 
 ## DID (W3C DID Core)
 
-The `VaultContract` initializes and maintains DID-related metadata:
+The `VaultContract` initializes and maintains DID-related metadata por bóveda/`owner`:
 
-- During `initialize`, the contract:
-  - Sets an `admin` address (DID controller/owner).
-  - Accepts a generative `did_uri` string and persists the **DID URI**.
+- During `initialize(owner, did_uri)`, the contract:
+  - Sets an `admin` address for that vault (controller/owner).
+  - Accepts a generative `did_uri` string and persists the **DID URI** scoped to the `owner`.
 
 - DID Document content (as constructed in tests and initialization args):
   - `@context`: includes standard entries such as `https://www.w3.org/ns/did/v1` and security suite contexts, e.g. `https://w3id.org/security/suites/ed25519-2020/v1` and `https://w3id.org/security/suites/x25519-2020/v1`.
@@ -34,8 +34,8 @@ The `VaultContract` initializes and maintains DID-related metadata:
   - `id`: DID URI (e.g., `did:acta:...`). The DID method string is configurable (tests use `acta`).
 
 Notes:
-- The DID contract is responsible for returning a DID Document (`DIDDocument`) upon initialization; its address is persisted in the vault for reference.
-- Authentication for administrative operations is enforced at the contract level (`admin.require_auth()`), aligning with DID controller authorization semantics.
+- The vault does not deploy a DID contract; DID resolution is expected off-chain via the stored DID URI.
+- Authentication for administrative operations is enforced per bóveda (`admin.require_auth()`), aligning with DID controller authorization semantics.
 
 ## Verifiable Credentials (W3C VC)
 
@@ -52,7 +52,7 @@ VerifiableCredential {
 }
 ```
 
-- `store_vc(e, vc_id, vc_data, issuer, issuer_did, issuance_contract)`:
+- `store_vc(e, owner, vc_id, vc_data, issuer, issuer_did, issuance_contract)`:
   - Validates vault is not revoked.
   - Validates the `issuer` is authorized and requires issuer auth (`issuer.require_auth()`).
   - Writes the VC under key `VC(vc_id)` in persistent storage.
@@ -79,10 +79,10 @@ VerifiableCredential {
 
 ### Authorization Model
 
-`VaultContract` maintains an allow-list of issuers:
-
-- `authorize_issuer(e, issuer)` and `authorize_issuers(e, issuers)` update `Issuers` storage.
-- `revoke_issuer(e, issuer)` removes an issuer.
+`VaultContract` maintains an allow-list of issuers por bóveda/`owner`:
+ 
+- `authorize_issuer(e, owner, issuer)` and `authorize_issuers(e, owner, issuers)` update `Issuers(owner)` storage.
+- `revoke_issuer(e, owner, issuer)` removes an issuer.
 - All write operations to the vault require issuer authorization and authentication.
 
 ### Read Access / Getters
@@ -126,15 +126,15 @@ Notes:
 
 ## Storage Layout
 
-`VaultContract` uses Soroban storage keys reflecting DID/VC concepts:
+`VaultContract` uses Soroban storage keys con scope por `owner`:
 
-- `Admin` (instance): Address of the contract admin.
-- `Did` (instance): DID URI of the vault owner.
-- `DidContract` (instance): Address of the deployed DID contract.
-- `Revoked` (instance): Boolean flag marking vault revocation.
-- `Issuers` (persistent): `Vec<Address>` of authorized issuers.
-- `VC(vc_id)` (persistent): `VerifiableCredential` stored by ID.
-- Migration helpers (`VCs` vector) exist for legacy data formats.
+- `ContractAdmin` (instance): Address del admin del contrato (autoriza `upgrade`).
+- `Admin(owner)` (instance): Address del admin de la bóveda de `owner`.
+- `Did(owner)` (instance): DID URI del `owner`.
+- `Revoked(owner)` (instance): bandera booleana de revocación de la bóveda.
+- `Issuers(owner)` (persistent): `Vec<Address>` de emisores autorizados para `owner`.
+- `VC(owner, vc_id)` (persistent): `VerifiableCredential` almacenado por ID para `owner`.
+- Ayudas de migración (`VCs(owner)` vector) existen para formatos de datos legacy.
 
 Instance vs Persistent:
 - Instance storage is tied to the current contract instance lifecycle.

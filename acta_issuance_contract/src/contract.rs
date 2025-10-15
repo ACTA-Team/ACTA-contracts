@@ -29,7 +29,13 @@ impl VCIssuanceTrait for VCIssuanceContract {
         storage::write_issuer_did(&e, &issuer_did);
     }
 
-    fn issue(e: Env, vc_id: String, vc_data: String, vault_contract: Address) -> String {
+    fn issue(
+        e: Env,
+        owner: Address,
+        vc_id: String,
+        vc_data: String,
+        vault_contract: Address,
+    ) -> String {
         let admin = validate_admin(&e);
 
         let contract_address = e.current_contract_address();
@@ -37,6 +43,7 @@ impl VCIssuanceTrait for VCIssuanceContract {
 
         let store_vc_args = vec![
             &e,
+            Val::from_val(&e, &owner),
             Val::from_val(&e, &vc_id),
             Val::from_val(&e, &vc_data),
             Val::from_val(&e, &admin),

@@ -3,7 +3,7 @@ use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 pub struct VaultContractTest<'a> {
     pub env: Env,
-    pub admin: Address,
+    pub owner: Address,
     pub issuer: Address,
     pub did_uri: String,
     pub contract: VaultContractClient<'a>,
@@ -13,7 +13,7 @@ impl<'a> VaultContractTest<'a> {
     pub fn setup() -> Self {
         let env: Env = Default::default();
         env.mock_all_auths();
-        let admin = Address::generate(&env);
+        let owner = Address::generate(&env);
         let issuer = Address::generate(&env);
         let did_uri = String::from_str(
             &env,
@@ -23,7 +23,7 @@ impl<'a> VaultContractTest<'a> {
         let contract = VaultContractClient::new(&env, &env.register_contract(None, VaultContract));
         VaultContractTest {
             env,
-            admin,
+            owner,
             issuer,
             did_uri,
             contract,

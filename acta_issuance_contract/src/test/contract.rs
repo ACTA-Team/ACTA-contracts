@@ -42,8 +42,8 @@ fn test_issue() {
         contract,
     } = VCIssuanceContractTest::setup();
 
-    let vault_contract_id = create_vc(&env, &admin, &contract, &issuer_did);
-    contract.issue(&vc_id, &vc_data, &vault_contract_id);
+    let (vault_contract_id, owner) = create_vc(&env, &admin, &contract, &issuer_did);
+    contract.issue(&owner, &vc_id, &vc_data, &vault_contract_id);
 }
 
 #[test]
@@ -56,8 +56,8 @@ fn test_revoke_vc() {
         issuer_did,
         contract,
     } = VCIssuanceContractTest::setup();
-    let vault_contract_id = create_vc(&env, &admin, &contract, &issuer_did);
-    let vc_id = contract.issue(&vc_id, &vc_data, &vault_contract_id);
+    let (vault_contract_id, owner) = create_vc(&env, &admin, &contract, &issuer_did);
+    let vc_id = contract.issue(&owner, &vc_id, &vc_data, &vault_contract_id);
 
     let date = String::from_str(&env, "2023-12-05T21:37:44.389Z");
 
@@ -94,8 +94,8 @@ fn test_revoke_vc_when_it_was_already_revoked() {
         issuer_did,
         contract,
     } = VCIssuanceContractTest::setup();
-    let vault_contract_id = create_vc(&env, &admin, &contract, &issuer_did);
-    let vc_id = contract.issue(&vc_id, &vc_data, &vault_contract_id);
+    let (vault_contract_id, owner) = create_vc(&env, &admin, &contract, &issuer_did);
+    let vc_id = contract.issue(&owner, &vc_id, &vc_data, &vault_contract_id);
 
     let date_1 = String::from_str(&env, "2023-12-05T21:37:44.389Z");
     let date_2 = String::from_str(&env, "2023-21-05T21:37:44.389Z");
@@ -114,8 +114,8 @@ fn test_verify_vc() {
         issuer_did,
         contract,
     } = VCIssuanceContractTest::setup();
-    let vault_contract_id = create_vc(&env, &admin, &contract, &issuer_did);
-    let vc_id = contract.issue(&vc_id, &vc_data, &vault_contract_id);
+    let (vault_contract_id, owner) = create_vc(&env, &admin, &contract, &issuer_did);
+    let vc_id = contract.issue(&owner, &vc_id, &vc_data, &vault_contract_id);
 
     let valid_vc_map = get_valid_vc_map(&env);
     assert_eq!(contract.verify(&vc_id), valid_vc_map)

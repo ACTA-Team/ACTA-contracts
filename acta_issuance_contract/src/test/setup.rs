@@ -43,7 +43,7 @@ pub fn create_vc(
     admin: &Address,
     contract: &VCIssuanceContractClient,
     issuer_did: &String,
-) -> Address {
+) -> (Address, Address) {
     let vault_admin = Address::generate(env);
     let vault_contract_address = env.register_contract_wasm(None, vault_contract::WASM);
     let vault_client = vault_contract::Client::new(env, &vault_contract_address);
@@ -56,7 +56,7 @@ pub fn create_vc(
     vault_client.authorize_issuer(admin);
 
     contract.initialize(admin, issuer_did);
-    vault_contract_address
+    (vault_contract_address, vault_admin)
 }
 
 pub fn get_revoked_vc_map(env: &Env, date: String) -> Map<String, String> {

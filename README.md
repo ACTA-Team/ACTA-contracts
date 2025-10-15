@@ -4,9 +4,9 @@ Issuance, storage, and verification of Verifiable Credentials (VC) on Soroban.
 
 This monorepo contains the ACTA contracts:
 - `ACTA Issuance`: issue, verify, and revoke VCs.
-- `ACTA Vault`: encrypted storage and issuer authorization.
+- `ACTA Vault`: multi-tenant encrypted storage and issuer authorization per owner.
 - `Deployer`: atomic deployment of contracts and initialization.
- - (Optional) Off-chain DID resolution: the vault stores a DID URI string.
+ - (Optional) Off-chain DID resolution: the vault stores a DID URI string per owner (no DID contract deployed).
 
 ## Build
 

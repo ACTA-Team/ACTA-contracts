@@ -2,6 +2,9 @@
 
 Issues, verifies, and revokes Verifiable Credentials (VCs) on Soroban.
 
+## Testnet Contract ID
+- `CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
+
 ## Features
 - VC issuance: stores encrypted payload in the holder’s Vault.
 - Status verification: `valid`, `revoked` (with date), `invalid`.
@@ -15,7 +18,7 @@ Issues, verifies, and revokes Verifiable Credentials (VCs) on Soroban.
 
 ## Functions
 - `initialize(admin: Address, issuer_did: String)`
-- `issue(vc_id: String, vc_data: String, vault_contract: Address) -> String`
+- `issue(owner: Address, vc_id: String, vc_data: String, vault_contract: Address) -> String`
 - `verify(vc_id: String) -> Map<String, String>`
 - `revoke(vc_id: String, date: String)`
 - `set_admin(new_admin: Address)`
@@ -31,9 +34,49 @@ soroban contract invoke \
   --network-passphrase 'Test SDF Network ; September 2015' \
   -- \
   issue \
+  --owner G...OWNER \
   --vc_id "sample-vc-id" \
   --vc_data "<encrypted_payload>" \
   --vault_contract VAULT_CONTRACT_ID
+```
+
+## Deploy & Initialize (Testnet)
+
+```bash
+# From ACTA-Contracts/acta_issuance_contract
+soroban contract build
+
+# Deploy (uses default identity: acta_sc_source)
+soroban contract deploy \
+  --wasm "C:\\Projects\\ACTA\\API\\ACTA-Contracts\\target\\wasm32v1-none\\release\\acta_issuance_contract.wasm" \
+  --network testnet \
+  --source acta_sc_source
+# => Contract ID: CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA
+
+# Initialize with admin and issuer DID
+soroban contract invoke \
+  --id CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA \
+  --network testnet \
+  --source acta_sc_source \
+  -- \
+  initialize \
+  --admin GDIWRJDHMK3JTMXSMCGFEM2QMCHSQ2BTMY2DFH3MS7VZGHXLI46OYE25 \
+  --issuer_did "did:pkh:stellar:testnet:GDIWRJDHMK3JTMXSMCGFEM2QMCHSQ2BTMY2DFH3MS7VZGHXLI46OYE25"
+```
+
+## Issue a VC (Testnet)
+
+```bash
+soroban contract invoke \
+  --id CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA \
+  --network testnet \
+  --source acta_sc_source \
+  -- \
+  issue \
+  --owner G...OWNER \
+  --vc_id "vc-123" \
+  --vc_data "<encrypted_payload>" \
+  --vault_contract CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF
 ```
 
 ## License

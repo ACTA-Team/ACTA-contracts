@@ -10,7 +10,14 @@ pub struct VerifiableCredential {
     pub issuer_did: String,
 }
 
-pub fn store_vc(e: &Env, id: String, data: String, issuance_contract: Address, issuer_did: String) {
+pub fn store_vc(
+    e: &Env,
+    owner: &Address,
+    id: String,
+    data: String,
+    issuance_contract: Address,
+    issuer_did: String,
+) {
     let new_vc: VerifiableCredential = VerifiableCredential {
         id: id.clone(),
         data,
@@ -18,5 +25,5 @@ pub fn store_vc(e: &Env, id: String, data: String, issuance_contract: Address, i
         issuer_did,
     };
 
-    storage::write_vc(e, &id, &new_vc);
+    storage::write_vc(e, owner, &id, &new_vc);
 }

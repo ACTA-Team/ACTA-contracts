@@ -20,63 +20,69 @@ pub struct VaultContract;
 
 #[contractimpl]
 impl VaultTrait for VaultContract {
-    fn initialize(e: Env, admin: Address, did_uri: String) {
-        if storage::has_admin(&e) {
+    fn initialize(e: Env, owner: Address, did_uri: String) {
+        if storage::has_admin(&e, &owner) {
             panic_with_error!(e, ContractError::AlreadyInitialized);
         }
 
-        storage::write_admin(&e, &admin);
-        storage::write_did(&e, &did_uri);
-        storage::write_revoked(&e, &false);
-        storage::write_issuers(&e, &Vec::new(&e));
+        // Por defecto, el admin inicial es el owner
+        storage::write_admin(&e, &owner, &owner);
+        // Si no hay admin de contrato, establecemos el primero que inicializa
+        if !storage::has_contract_admin(&e) {
+            storage::write_contract_admin(&e, &owner);
+        }
+        storage::write_did(&e, &owner, &did_uri);
+        storage::write_revoked(&e, &owner, &false);
+        storage::write_issuers(&e, &owner, &Vec::new(&e));
     }
 
-    fn authorize_issuers(e: Env, issuers: Vec<Address>) {
-        validate_admin(&e);
-        validate_vault_revoked(&e);
+    fn authorize_issuers(e: Env, owner: Address, issuers: Vec<Address>) {
+        validate_admin(&e, &owner);
+        validate_vault_revoked(&e, &owner);
 
-        issuer::authorize_issuers(&e, &issuers);
+        issuer::authorize_issuers(&e, &owner, &issuers);
     }
 
-    fn authorize_issuer(e: Env, issuer: Address) {
-        validate_admin(&e);
-        validate_vault_revoked(&e);
+    fn authorize_issuer(e: Env, owner: Address, issuer: Address) {
+        validate_admin(&e, &owner);
+        validate_vault_revoked(&e, &owner);
 
-        issuer::authorize_issuer(&e, &issuer);
+        issuer::authorize_issuer(&e, &owner, &issuer);
     }
 
-    fn revoke_issuer(e: Env, issuer: Address) {
-        validate_admin(&e);
-        validate_vault_revoked(&e);
+    fn revoke_issuer(e: Env, owner: Address, issuer: Address) {
+        validate_admin(&e, &owner);
+        validate_vault_revoked(&e, &owner);
 
-        issuer::revoke_issuer(&e, &issuer)
+        issuer::revoke_issuer(&e, &owner, &issuer)
     }
 
     fn store_vc(
         e: Env,
+        owner: Address,
         vc_id: String,
         vc_data: String,
         issuer: Address,
         issuer_did: String,
         issuance_contract: Address,
     ) {
-        validate_vault_revoked(&e);
-        validate_issuer(&e, &issuer);
+        validate_vault_revoked(&e, &owner);
+        validate_issuer(&e, &owner, &issuer);
 
-        verifiable_credential::store_vc(&e, vc_id, vc_data, issuance_contract, issuer_did);
+        verifiable_credential::store_vc(&e, &owner, vc_id, vc_data, issuance_contract, issuer_did);
     }
 
-    fn revoke_vault(e: Env) {
-        validate_admin(&e);
-        validate_vault_revoked(&e);
+    fn revoke_vault(e: Env, owner: Address) {
+        validate_admin(&e, &owner);
+        validate_vault_revoked(&e, &owner);
 
-        storage::write_revoked(&e, &true);
+        storage::write_revoked(&e, &owner, &true);
     }
 
-    fn migrate(e: Env) {
-        validate_admin(&e);
+    fn migrate(e: Env, owner: Address) {
+        validate_admin(&e, &owner);
 
-        let vcs = storage::read_old_vcs(&e);
+        let vcs = storage::read_old_vcs(&e, &owner);
 
         if vcs.is_none() {
             panic_with_error!(e, ContractError::VCSAlreadyMigrated)
@@ -85,6 +91,7 @@ impl VaultTrait for VaultContract {
         for vc in vcs.unwrap().iter() {
             verifiable_credential::store_vc(
                 &e,
+                &owner,
                 vc.id.clone(),
                 vc.data.clone(),
                 vc.issuance_contract.clone(),
@@ -92,17 +99,17 @@ impl VaultTrait for VaultContract {
             );
         }
 
-        storage::remove_old_vcs(&e);
+        storage::remove_old_vcs(&e, &owner);
     }
 
-    fn set_admin(e: Env, new_admin: Address) {
-        validate_admin(&e);
+    fn set_admin(e: Env, owner: Address, new_admin: Address) {
+        validate_admin(&e, &owner);
 
-        storage::write_admin(&e, &new_admin);
+        storage::write_admin(&e, &owner, &new_admin);
     }
 
     fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
-        let admin = storage::read_admin(&e);
+        let admin = storage::read_contract_admin(&e);
         admin.require_auth();
 
         e.deployer().update_current_contract_wasm(new_wasm_hash);
@@ -113,13 +120,13 @@ impl VaultTrait for VaultContract {
     }
 }
 
-fn validate_admin(e: &Env) {
-    let contract_admin = storage::read_admin(e);
+fn validate_admin(e: &Env, owner: &Address) {
+    let contract_admin = storage::read_admin(e, owner);
     contract_admin.require_auth();
 }
 
-fn validate_issuer(e: &Env, issuer: &Address) {
-    let issuers: Vec<Address> = storage::read_issuers(e);
+fn validate_issuer(e: &Env, owner: &Address, issuer: &Address) {
+    let issuers: Vec<Address> = storage::read_issuers(e, owner);
 
     if !issuer::is_authorized(&issuers, issuer) {
         panic_with_error!(e, ContractError::IssuerNotAuthorized)
@@ -128,8 +135,8 @@ fn validate_issuer(e: &Env, issuer: &Address) {
     issuer.require_auth();
 }
 
-fn validate_vault_revoked(e: &Env) {
-    let vault_revoked: bool = storage::read_revoked(e);
+fn validate_vault_revoked(e: &Env, owner: &Address) {
+    let vault_revoked: bool = storage::read_revoked(e, owner);
     if vault_revoked {
         panic_with_error!(e, ContractError::VaultRevoked)
     }
