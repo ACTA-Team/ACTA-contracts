@@ -6,7 +6,7 @@ This document describes each public function of the `acta_vault_contract`, the a
 
 Note: Example ID — replace with your own deployment.
 
-- `CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF`
+- `CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH`
 
 ## Key Concepts
 
@@ -242,11 +242,11 @@ Typical use:
 ### CLI Example: Initialize and Store VC (Testnet)
 
 - Initialize vault for `owner`:
-  `soroban contract invoke --id CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF --network testnet -- initialize --owner G...OWNER --did_uri did:pkh:stellar:testnet:G...OWNER`
+  `soroban contract invoke --id CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH --network testnet -- initialize --owner G...OWNER --did_uri did:pkh:stellar:testnet:G...OWNER`
 - Authorize an issuer:
-  `soroban contract invoke --id CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF --network testnet -- authorize_issuer --owner G...OWNER --issuer G...ISSUER`
+  `soroban contract invoke --id CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH --network testnet -- authorize_issuer --owner G...OWNER --issuer G...ISSUER`
 - Store a VC:
-  `soroban contract invoke --id CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF --network testnet -- store_vc --owner G...OWNER --vc_id vc-123 --vc_data '{"name":"Alice"}' --issuer G...ISSUER --issuer_did did:pkh:stellar:testnet:G...ISSUER --issuance_contract CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
+  `soroban contract invoke --id CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH --network testnet -- store_vc --owner G...OWNER --vc_id vc-123 --vc_data '{"name":"Alice"}' --issuer G...ISSUER --issuer_did did:pkh:stellar:testnet:G...ISSUER --issuance_contract CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
 
 ---
 

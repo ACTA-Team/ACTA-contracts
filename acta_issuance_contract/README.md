@@ -3,21 +3,26 @@
 Issues, verifies, and revokes Verifiable Credentials (VCs) on Soroban.
 
 ## Testnet Contract ID
+
 Note: Example ID — replace with your own deployment.
+
 - `CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
 
 ## Features
+
 - VC issuance: stores encrypted payload in the holder’s Vault.
 - Status verification: `valid`, `revoked` (with date), `invalid`.
 - VC revocation by `vc_id`.
 - Administration: `initialize`, `set_admin`, `upgrade`, `version`.
 
 ## Security & Privacy
+
 - `admin.require_auth()` for sensitive actions.
 - `vc_data` must be encrypted off-chain (no plaintext PII on-chain).
 - On-chain only stores status and access control.
 
 ## Functions
+
 - `initialize(admin: Address, issuer_did: String)`
 - `issue(owner: Address, vc_id: String, vc_data: String, vault_contract: Address) -> String`
 - `verify(vc_id: String) -> Map<String, String>`
@@ -27,6 +32,7 @@ Note: Example ID — replace with your own deployment.
 - `version() -> String`
 
 ## Example (CLI)
+
 ```bash
 soroban contract invoke \
   --id ISSUANCE_CONTRACT_ID \
@@ -77,8 +83,9 @@ soroban contract invoke \
   --owner G...OWNER \
   --vc_id "vc-123" \
   --vc_data "<encrypted_payload>" \
-  --vault_contract CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF
+  --vault_contract CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH
 ```
 
 ## License
+
 Apache 2.0.

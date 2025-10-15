@@ -3,10 +3,12 @@
 This guide describes each public function of the `acta_issuance_contract`, its authorization model, how it interacts with the Vault, and examples for testnet usage.
 
 Note: Example Testnet IDs — replace with your own deployment IDs.
+
 - Issuance Contract: `CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
-- Vault Contract: `CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF`
+- Vault Contract: `CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH`
 
 ## Key Concepts
+
 - `admin`: address that controls the issuance contract. Must sign sensitive actions.
 - `issuer_did`: issuer’s DID stored in the contract for traceability (e.g., `did:pkh:stellar:testnet:G...`).
 - `vc_id` and `vc_data`: identifier and encrypted payload of the credential.
@@ -14,6 +16,7 @@ Note: Example Testnet IDs — replace with your own deployment IDs.
 - `vault_contract`: contract ID of the holder’s Vault where the VC payload is stored.
 
 ## Authorization and State Rules
+
 - Sensitive actions (`initialize`, `issue`, `revoke`, `migrate`, `upgrade`, `set_admin`) require the current `admin` signature (`require_auth`).
 - `issue` internally calls `store_vc` on the holder’s Vault, using the issuance `admin` as the `issuer`. The Vault must:
   - be initialized for the `owner`;
@@ -22,6 +25,7 @@ Note: Example Testnet IDs — replace with your own deployment IDs.
 - The contract stores local VC status (`VCStatus`) to power `verify` and prevent duplicate revocations.
 
 ## Common Errors (codes)
+
 - `#1 AlreadyInitialized`: attempt to initialize a contract that already has an `admin`.
 - `#2 VCNotFound`: attempt to revoke a non-existent/invalid VC.
 - `#3 VCAlreadyRevoked`: attempt to revoke a VC that is already revoked.
@@ -30,6 +34,7 @@ Note: Example Testnet IDs — replace with your own deployment IDs.
 ---
 
 ## initialize
+
 Initialize the issuance contract with the `admin` and `issuer_did`.
 
 - Effect: sets `admin` and stores `issuer_did`.
@@ -42,6 +47,7 @@ Example (testnet):
 ---
 
 ## issue
+
 Issue a VC and store it in the holder’s Vault.
 
 - Effect:
@@ -54,11 +60,12 @@ Issue a VC and store it in the holder’s Vault.
 - Typical use: back-end issuance flows for one or multiple holders.
 
 Example (testnet):
-`soroban contract invoke --id CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA --network testnet --source acta_sc_source -- issue --owner G...OWNER --vc_id "vc-123" --vc_data "<encrypted_payload>" --vault_contract CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF`
+`soroban contract invoke --id CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA --network testnet --source acta_sc_source -- issue --owner G...OWNER --vc_id "vc-123" --vc_data "<encrypted_payload>" --vault_contract CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH`
 
 ---
 
 ## verify
+
 Verify the status of a VC.
 
 - Effect: returns a `Map { "status": "valid"|"invalid"|"revoked", "since": date? }`.
@@ -71,6 +78,7 @@ Example (testnet):
 ---
 
 ## revoke
+
 Revoke a VC by `vc_id`, recording the revocation `date`.
 
 - Effect: sets status to `VCStatus::Revoked(date)`.
@@ -86,6 +94,7 @@ Example (testnet):
 ---
 
 ## migrate
+
 Migrate legacy storage (`VCs`, `Revocations`) to the current `VCStatus` scheme by key.
 
 - Effect: re-stores legacy VCs and removes old keys.
@@ -98,6 +107,7 @@ Example (testnet):
 ---
 
 ## set_admin
+
 Change the `admin` of the issuance contract.
 
 - Effect: assigns `new_admin` as administrator.
@@ -110,6 +120,7 @@ Example (testnet):
 ---
 
 ## upgrade
+
 Upgrade the contract WASM code.
 
 - Effect: replaces the WASM with the `new_wasm_hash` (32 bytes).
@@ -122,6 +133,7 @@ Example (testnet):
 ---
 
 ## version
+
 Returns the package version (`CARGO_PKG_VERSION`) compiled into the contract.
 
 - Typical use: audit which version is running on-chain.
@@ -132,11 +144,13 @@ Example (testnet):
 ---
 
 ## Data Visibility & Privacy
+
 - Soroban state is public: authorization rules control execution/write access, not raw reads.
 - Do not store plaintext PII: encrypt `vc_data` off-chain; consider storing only `sha256(vc_data)` and minimal metadata.
 - `issuer_did` and `issuance_contract` (in Vault) are traceability metadata.
 
 ## Interaction with Vault
+
 - Recommended flow:
   - Initialize the Vault for the `owner` and record its `did_uri`.
   - Authorize the issuance `admin` as `issuer` in that Vault.
@@ -144,7 +158,8 @@ Example (testnet):
 - For revocation, use `revoke` on issuance; `verify` checks local status.
 
 ## Best Practices
+
 - Align signer with role: `admin` signs administrative actions; `issuer` (issuance admin) is authorized per Vault.
 - Manage IDs in configuration (e.g., `.env`):
   - `ISSUANCE_CONTRACT_ID=CBRG5UJ7JZRIQMO2LCOUGODWXPSIXD2H5EMCCUP5BWZOKJ73AHNH4RUA`
-  - `VAULT_CONTRACT_ID=CATIXW2QGZEBDOWK6HUPWR6OUDIXIRCAALUHBJHDNDBHF6WAHIC4VQZF`
+  - `VAULT_CONTRACT_ID=CD7AN2XKCQLFNENL6YUUNZ6FBAL63N5J5X7AEGLRYSG6YBS6V35OSJCH`
