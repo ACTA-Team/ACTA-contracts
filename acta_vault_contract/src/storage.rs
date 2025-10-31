@@ -53,10 +53,7 @@ pub fn write_did(e: &Env, owner: &Address, did: &String) {
 
 pub fn read_revoked(e: &Env, owner: &Address) -> bool {
     let key = DataKey::Revoked(owner.clone());
-    match e.storage().instance().get(&key) {
-        Some(v) => v,
-        None => false,
-    }
+    e.storage().instance().get(&key).unwrap()
 }
 
 pub fn write_revoked(e: &Env, owner: &Address, revoked: &bool) {
@@ -66,10 +63,7 @@ pub fn write_revoked(e: &Env, owner: &Address, revoked: &bool) {
 
 pub fn read_issuers(e: &Env, owner: &Address) -> Vec<Address> {
     let key = DataKey::Issuers(owner.clone());
-    match e.storage().persistent().get(&key) {
-        Some(v) => v,
-        None => Vec::new(e),
-    }
+    e.storage().persistent().get(&key).unwrap()
 }
 
 pub fn write_issuers(e: &Env, owner: &Address, issuers: &Vec<Address>) {

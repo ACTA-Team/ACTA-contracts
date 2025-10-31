@@ -66,10 +66,8 @@ impl VaultTrait for VaultContract {
         issuer_did: String,
         issuance_contract: Address,
     ) {
-        // Evita pago por inicialización: si no existe estado previo, los defaults en storage permiten operar.
-        // Seguridad: requerimos la firma del issuer, pero no exigimos autorización previa para crear la primera credencial.
         validate_vault_revoked(&e, &owner);
-        issuer.require_auth();
+        validate_issuer(&e, &owner, &issuer);
 
         verifiable_credential::store_vc(&e, &owner, vc_id, vc_data, issuance_contract, issuer_did);
     }
