@@ -2,11 +2,12 @@
 
 This document describes each public function of the `acta_vault_contract`, the authorization model, and how the multi‑tenant vault works. It also covers how to deploy and reference the issuance contract.
 
-**Testnet Vault Contract ID**
+**Network Vault Contract IDs**
 
-Note: Example ID — replace with your own deployment.
+Note: Examples — replace with your own deployment if different.
 
-- `CBOWVYBPLXU44EXGUJB3T4EC7GA47T6KERAOECYNP4WNFA73DZHBP4VQ`
+- Testnet: `CBOWVYBPLXU44EXGUJB3T4EC7GA47T6KERAOECYNP4WNFA73DZHBP4VQ`
+- Mainnet: `CBWXA3XCP7DHIDIFEPUVNKCXKN27KMYQBKKRMSEA25EEDIKRKRTTQZQ4`
 
 ## Key Concepts
 
@@ -277,9 +278,10 @@ Typical use:
 - `issuance_contract` is the on‑chain contract ID of the issuer that originated the VC. It is stored as metadata for traceability and future cross‑verification.
 - Today, the vault does not call or validate the issuance contract at `store_vc`; it just records the reference.
 
-**Current Testnet Issuance Contract ID**
+**Issuance Contract IDs (by network)**
 
-- `CANYEUDJCAPQ5ACXXJQXR4VA6727LFGFP2FFE35MF3YEQTXCMIA7BNWA`
+- Testnet: `CANYEUDJCAPQ5ACXXJQXR4VA6727LFGFP2FFE35MF3YEQTXCMIA7BNWA`
+- Mainnet: `CAIHPYSATKLN7WL4ERMX2HCEND4BXOWATH4ETYOJSY4MB7YRNY6L7TYC`
 
 ### Deploying the Issuance Contract (Testnet)
 

@@ -2,10 +2,12 @@
 
 This guide describes each public function of the `acta_issuance_contract`, its authorization model, how it interacts with the Vault, and examples for testnet usage.
 
-Note: Example Testnet IDs — replace with your own deployment IDs.
+Network IDs (examples — replace with your own deployments if different)
 
-- Issuance Contract: `CANYEUDJCAPQ5ACXXJQXR4VA6727LFGFP2FFE35MF3YEQTXCMIA7BNWA`
-- Vault Contract: `CBOWVYBPLXU44EXGUJB3T4EC7GA47T6KERAOECYNP4WNFA73DZHBP4VQ`
+- Testnet — Issuance: `CANYEUDJCAPQ5ACXXJQXR4VA6727LFGFP2FFE35MF3YEQTXCMIA7BNWA`
+- Testnet — Vault: `CBOWVYBPLXU44EXGUJB3T4EC7GA47T6KERAOECYNP4WNFA73DZHBP4VQ`
+- Mainnet — Issuance: `CAIHPYSATKLN7WL4ERMX2HCEND4BXOWATH4ETYOJSY4MB7YRNY6L7TYC`
+- Mainnet — Vault: `CBWXA3XCP7DHIDIFEPUVNKCXKN27KMYQBKKRMSEA25EEDIKRKRTTQZQ4`
 
 ## Key Concepts
 
