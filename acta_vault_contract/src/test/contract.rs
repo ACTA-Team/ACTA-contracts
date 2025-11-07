@@ -1,6 +1,7 @@
 use super::setup::{get_vc_setup, VCVaultContractTest};
 use crate::test::setup::VaultContractTest;
 use soroban_sdk::{testutils::Address as _, vec, Address, String};
+use soroban_sdk::{contract, contractimpl, Env, Map};
 
 #[test]
 fn test_initialize() {
@@ -404,4 +405,64 @@ fn test_push_vc_not_found_should_panic() {
 
     let missing_vc_id = String::from_str(&env, "missing-vc");
     contract.push(&from_owner, &to_owner, &missing_vc_id, &issuer);
+}
+
+// --- Mock issuance contract used for verify_vc tests ---
+#[contract]
+struct MockIssuance;
+
+#[contractimpl]
+impl MockIssuance {
+    pub fn verify(e: Env, _vc_id: String) -> Map<String, String> {
+        let mut m = Map::new(&e);
+        m.set(String::from_str(&e, "status"), String::from_str(&e, "valid"));
+        m
+    }
+}
+
+#[test]
+fn test_verify_vc_valid_via_issuance() {
+    let VaultContractTest {
+        env,
+        owner,
+        issuer,
+        did_uri,
+        contract,
+    } = VaultContractTest::setup();
+
+    // Register mock issuance and use its address
+    let issuance_addr = Address::from_contract_id(&env, &env.register_contract(None, MockIssuance));
+
+    // Prepare VC data
+    let vc_id = String::from_str(&env, "vc-verify-1");
+    let vc_data = String::from_str(&env, "vc_payload");
+    let issuer_did = String::from_str(&env, "did:pkh:stellar:testnet:G...ISSUER");
+
+    // Setup vault and store VC
+    contract.initialize(&owner, &did_uri);
+    contract.authorize_issuer(&owner, &issuer);
+    contract.store_vc(&owner, &vc_id, &vc_data, &issuer, &issuer_did, &issuance_addr);
+
+    // Verify via vault wrapper (signature-less)
+    let res = contract.verify_vc(&owner, &vc_id);
+    let status = res.get(String::from_str(&env, "status")).unwrap();
+    assert_eq!(status, String::from_str(&env, "valid"));
+}
+
+#[test]
+fn test_verify_vc_invalid_when_missing() {
+    let VaultContractTest {
+        env,
+        owner,
+        issuer: _issuer,
+        did_uri,
+        contract,
+    } = VaultContractTest::setup();
+
+    contract.initialize(&owner, &did_uri);
+
+    let vc_id_missing = String::from_str(&env, "missing-vc-verify");
+    let res = contract.verify_vc(&owner, &vc_id_missing);
+    let status = res.get(String::from_str(&env, "status")).unwrap();
+    assert_eq!(status, String::from_str(&env, "invalid"));
 }

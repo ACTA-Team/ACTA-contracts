@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, BytesN, Env, String, Vec};
+use soroban_sdk::{Address, BytesN, Env, String, Vec, Map};
 
 #[allow(dead_code)]
 pub trait VaultTrait {
@@ -30,6 +30,10 @@ pub trait VaultTrait {
 
     /// Gets a verifiable credential by ID for the owner's vault.
     fn get_vc(e: Env, owner: Address, vc_id: String) -> Option<crate::verifiable_credential::VerifiableCredential>;
+
+    /// Verifies the VC status via the issuance contract (signature-less).
+    /// Returns a map like { "status": "valid"|"invalid"|"revoked", "since": <date>? }.
+    fn verify_vc(e: Env, owner: Address, vc_id: String) -> Map<String, String>;
 
     /// Push: moves a VC from one owner's vault to another (issuer-only). No target authorization required.
     fn push(

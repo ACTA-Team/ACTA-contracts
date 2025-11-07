@@ -5,7 +5,7 @@ use crate::vault_trait::VaultTrait;
 use crate::verifiable_credential;
 use soroban_sdk::{
     contract, contractimpl, contractmeta, panic_with_error, Address, BytesN, Env, String, Vec,
-    IntoVal, symbol_short,
+    IntoVal, symbol_short, Map,
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -95,6 +95,24 @@ impl VaultTrait for VaultContract {
     fn get_vc(e: Env, owner: Address, vc_id: String) -> Option<verifiable_credential::VerifiableCredential> {
         // Public read: allow getting credential content without owner signature
         storage::read_vc(&e, &owner, &vc_id)
+    }
+
+    fn verify_vc(e: Env, owner: Address, vc_id: String) -> Map<String, String> {
+        // Read-only verification: no signatures required
+        let vc_opt = storage::read_vc(&e, &owner, &vc_id);
+        if vc_opt.is_none() {
+            let mut m = Map::new(&e);
+            m.set(String::from_str(&e, "status"), String::from_str(&e, "invalid"));
+            return m;
+        }
+
+        let vc = vc_opt.unwrap();
+        // Delegate to issuance contract's verify(vc_id) for status
+        e.invoke_contract::<Map<String, String>>(
+            &vc.issuance_contract,
+            &symbol_short!("verify"),
+            (vc_id,).into_val(&e),
+        )
     }
 
     fn push(
