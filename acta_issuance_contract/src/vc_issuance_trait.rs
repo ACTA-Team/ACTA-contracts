@@ -12,6 +12,8 @@ pub trait VCIssuanceTrait {
         vc_id: String,
         vc_data: String,
         vault_contract: Address,
+        issuer: Address,
+        issuer_did: String,
     ) -> String;
 
     /// Verifies if the Verifiable Credential is not revoked

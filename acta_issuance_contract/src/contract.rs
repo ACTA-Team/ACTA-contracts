@@ -35,18 +35,20 @@ impl VCIssuanceTrait for VCIssuanceContract {
         vc_id: String,
         vc_data: String,
         vault_contract: Address,
+        issuer: Address,
+        issuer_did: String,
     ) -> String {
-        let admin = validate_admin(&e);
+        // Permisos: el issuer debe firmar la transacción
+        issuer.require_auth();
 
         let contract_address = e.current_contract_address();
-        let issuer_did = storage::read_issuer_did(&e);
 
         let store_vc_args = vec![
             &e,
             Val::from_val(&e, &owner),
             Val::from_val(&e, &vc_id),
             Val::from_val(&e, &vc_data),
-            Val::from_val(&e, &admin),
+            Val::from_val(&e, &issuer),
             Val::from_val(&e, &issuer_did),
             Val::from_val(&e, &contract_address),
         ];

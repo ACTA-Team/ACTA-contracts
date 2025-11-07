@@ -40,7 +40,7 @@ impl<'a> VCIssuanceContractTest<'a> {
 
 pub fn create_vc(
     env: &Env,
-    admin: &Address,
+    issuer: &Address,
     contract: &VCIssuanceContractClient,
     issuer_did: &String,
 ) -> (Address, Address) {
@@ -53,9 +53,10 @@ pub fn create_vc(
         "did:pkh:stellar:testnet:GCUETKXJ2YNVADOF5SZBBZA6M3O6HEOXN4GRJZUW2MBRS2UKXZM37QDE",
     );
     vault_client.initialize(&vault_admin, &did_uri);
-    vault_client.authorize_issuer(admin);
+    vault_client.authorize_issuer(issuer);
 
-    contract.initialize(admin, issuer_did);
+    // El admin del contrato ya no participa en issue; mantenemos initialize para otras operaciones
+    contract.initialize(issuer, issuer_did);
     (vault_contract_address, vault_admin)
 }
 
