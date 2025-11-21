@@ -7,6 +7,7 @@ pub enum DataKey {
     Admin,       // Address
     IssuerDID,   // String
     VC(String),  // VCStatus
+    VCOwner(String), // Address
     Revocations, // Map<String, Revocation>
     VCs,         // Vec<VerifiableCredential>
 }
@@ -54,6 +55,16 @@ pub fn read_vc(e: &Env, vc_id: &String) -> VCStatus {
         .persistent()
         .get(&key)
         .unwrap_or(VCStatus::Invalid)
+}
+
+pub fn write_vc_owner(e: &Env, vc_id: &String, owner: &Address) {
+    let key = DataKey::VCOwner(vc_id.clone());
+    e.storage().persistent().set(&key, owner)
+}
+
+pub fn read_vc_owner(e: &Env, vc_id: &String) -> Option<Address> {
+    let key = DataKey::VCOwner(vc_id.clone());
+    e.storage().persistent().get(&key)
 }
 
 pub fn read_old_vcs(e: &Env) -> Option<Vec<String>> {

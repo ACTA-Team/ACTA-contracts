@@ -38,7 +38,6 @@ impl VCIssuanceTrait for VCIssuanceContract {
         issuer: Address,
         issuer_did: String,
     ) -> String {
-        // Permisos: el issuer debe firmar la transacción
         issuer.require_auth();
 
         let contract_address = e.current_contract_address();
@@ -56,6 +55,7 @@ impl VCIssuanceTrait for VCIssuanceContract {
         let store_vc_fn = Symbol::new(&e, "store_vc");
         e.invoke_contract::<()>(&vault_contract, &store_vc_fn, store_vc_args);
         storage::write_vc(&e, &vc_id, &VCStatus::Valid);
+        storage::write_vc_owner(&e, &vc_id, &owner);
 
         vc_id
     }
@@ -79,9 +79,14 @@ impl VCIssuanceTrait for VCIssuanceContract {
     }
 
     fn revoke(e: Env, vc_id: String, date: String) {
-        validate_admin(&e);
         validate_vc(&e, &vc_id);
-
+        match storage::read_vc_owner(&e, &vc_id) {
+            Some(owner) => owner.require_auth(),
+            None => {
+                let admin = storage::read_admin(&e);
+                admin.require_auth();
+            }
+        }
         verifiable_credential::revoke_vc(&e, vc_id, date);
     }
 
