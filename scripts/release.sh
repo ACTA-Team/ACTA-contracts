@@ -5,7 +5,7 @@ soroban config network add testnet \
   --network-passphrase "Test SDF Network ; September 2015"
 
 # Generate key to sign the transactions.
-soroban keys generate acta_sc_source --network testnet
+soroban keys generate acta_admin --network testnet
 
 # Install and deploy contracts.
 echo "Vault contract WASM ID:"
