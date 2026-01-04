@@ -94,6 +94,18 @@ impl ActaTrait for ActaContract {
         String::from_str(&e, VERSION)
     }
 
+    /// Returns fee configuration status (public read-only, no signature required).
+    ///
+    /// Returns:
+    /// - `enabled`: whether fees are enabled.
+    /// - `configured`: whether fee configuration is set (token_contract, fee_dest, fee_amount are all set).
+    /// - `token_contract`: token contract address (if configured).
+    /// - `fee_dest`: fee destination address (if configured).
+    /// - `fee_amount`: fee amount (if configured).
+    fn fee_config(e: Env) -> storage::FeeConfig {
+        storage::read_fee_config(&e)
+    }
+
     // -----------------------------
     // Vault (per owner)
     // -----------------------------

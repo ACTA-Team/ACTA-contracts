@@ -1,5 +1,7 @@
 use soroban_sdk::{Address, BytesN, Env, Map, String, Vec};
 
+use crate::storage::FeeConfig;
+
 /// ACTA unified contract interface.
 ///
 /// This contract merges the previous **Issuance** and **Vault** contracts into a
@@ -42,6 +44,16 @@ pub trait ActaTrait {
 
     /// Returns contract version.
     fn version(e: Env) -> String;
+
+    /// Returns fee configuration status (public read-only, no signature required).
+    ///
+    /// Returns:
+    /// - `enabled`: whether fees are enabled.
+    /// - `configured`: whether fee configuration is set (token_contract, fee_dest, fee_amount are all set).
+    /// - `token_contract`: token contract address (if configured).
+    /// - `fee_dest`: fee destination address (if configured).
+    /// - `fee_amount`: fee amount (if configured).
+    fn fee_config(e: Env) -> FeeConfig;
 
     // -----------------------------
     // Vault (per owner)

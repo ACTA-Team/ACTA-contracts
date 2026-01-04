@@ -121,6 +121,55 @@ pub fn read_fee_amount(e: &Env) -> i128 {
     e.storage().instance().get(&DataKey::FeeAmount).unwrap()
 }
 
+/// Fee configuration status (read-only public function return type).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FeeConfig {
+    /// Whether fees are enabled.
+    pub enabled: bool,
+    /// Whether fee configuration is set (token_contract, fee_dest, fee_amount are all set).
+    pub configured: bool,
+    /// Token contract address (if configured).
+    pub token_contract: Option<Address>,
+    /// Fee destination address (if configured).
+    pub fee_dest: Option<Address>,
+    /// Fee amount (if configured).
+    pub fee_amount: Option<i128>,
+}
+
+// Helper functions to safely read fee config (returning Option)
+
+pub fn try_read_fee_token_contract(e: &Env) -> Option<Address> {
+    e.storage().instance().get(&DataKey::FeeTokenContract)
+}
+
+pub fn try_read_fee_dest(e: &Env) -> Option<Address> {
+    e.storage().instance().get(&DataKey::FeeDest)
+}
+
+pub fn try_read_fee_amount(e: &Env) -> Option<i128> {
+    e.storage().instance().get(&DataKey::FeeAmount)
+}
+
+/// Reads the complete fee configuration status (public read-only function).
+pub fn read_fee_config(e: &Env) -> FeeConfig {
+    let enabled = read_fee_enabled(e);
+    let token_contract = try_read_fee_token_contract(e);
+    let fee_dest = try_read_fee_dest(e);
+    let fee_amount = try_read_fee_amount(e);
+    
+    // Fee is considered configured if all three values are set
+    let configured = token_contract.is_some() && fee_dest.is_some() && fee_amount.is_some();
+    
+    FeeConfig {
+        enabled,
+        configured,
+        token_contract,
+        fee_dest,
+        fee_amount,
+    }
+}
+
 // -----------------
 // Vault metadata (instance)
 // -----------------
