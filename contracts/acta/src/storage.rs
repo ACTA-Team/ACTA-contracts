@@ -206,7 +206,7 @@ pub fn try_read_fee_standard(e: &Env) -> Option<i128> {
 pub fn read_fee_standard(e: &Env) -> i128 {
     match try_read_fee_standard(e) {
         Some(v) => v,
-        None => read_fee_amount(e), // Fallback to global fee
+        None => 1_000_000, // Default: 1 USDC (1,000,000 units)
     }
 }
 
@@ -221,7 +221,7 @@ pub fn try_read_fee_early(e: &Env) -> Option<i128> {
 pub fn read_fee_early(e: &Env) -> i128 {
     match try_read_fee_early(e) {
         Some(v) => v,
-        None => read_fee_amount(e), // Fallback to global fee
+        None => 400_000, // Default: 0.4 USDC (400,000 units)
     }
 }
 

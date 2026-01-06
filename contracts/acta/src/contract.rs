@@ -583,18 +583,10 @@ fn store_vc_payload(
         let fee_dest = storage::read_fee_dest(e);
         
         // Determine fee amount:
-        // 1. If fee_override > 0, use it directly
-        // 2. Otherwise (fee_override == 0), check for custom fee for this issuer
-        // 3. Otherwise, fall back to global fee (which may be role-based)
-        let fee_amount = if fee_override > 0 {
-            fee_override
-        } else {
-            // Check for custom fee first
-            match storage::try_read_fee_custom(e, issuer_addr) {
-                Some(custom_fee) => custom_fee,
-                None => storage::read_fee_amount(e), // Fallback to global fee
-            }
-        };
+        // The API always calculates and passes the fee based on the API key role.
+        // If fee_override > 0, use it directly (this is the normal case).
+        // If fee_override == 0, it means admin role or no API key - charge 0.
+        let fee_amount = fee_override;
 
         // Only charge fee if amount > 0
         if fee_amount > 0 {
