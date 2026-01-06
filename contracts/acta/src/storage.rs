@@ -23,6 +23,12 @@ pub enum DataKey {
     FeeDest,                // Address
     FeeAmount,              // i128
 
+    // Role-based fee configuration (instance storage)
+    FeeAdmin,               // i128 - fee for admin role (typically 0)
+    FeeStandard,            // i128 - fee for standard role (typically 1 USDC)
+    FeeEarly,               // i128 - fee for early role (typically 0.4 USDC)
+    FeeCustom(Address),     // i128 - custom fee per issuer address
+
     // -----------------
     // Vault (per owner)
     // -----------------
@@ -167,6 +173,70 @@ pub fn read_fee_config(e: &Env) -> FeeConfig {
         token_contract,
         fee_dest,
         fee_amount,
+    }
+}
+
+// -----------------
+// Role-based fee config
+// -----------------
+
+pub fn write_fee_admin(e: &Env, amount: &i128) {
+    e.storage().instance().set(&DataKey::FeeAdmin, amount);
+}
+
+pub fn try_read_fee_admin(e: &Env) -> Option<i128> {
+    e.storage().instance().get(&DataKey::FeeAdmin)
+}
+
+pub fn read_fee_admin(e: &Env) -> i128 {
+    match try_read_fee_admin(e) {
+        Some(v) => v,
+        None => 0, // Default admin fee is 0
+    }
+}
+
+pub fn write_fee_standard(e: &Env, amount: &i128) {
+    e.storage().instance().set(&DataKey::FeeStandard, amount);
+}
+
+pub fn try_read_fee_standard(e: &Env) -> Option<i128> {
+    e.storage().instance().get(&DataKey::FeeStandard)
+}
+
+pub fn read_fee_standard(e: &Env) -> i128 {
+    match try_read_fee_standard(e) {
+        Some(v) => v,
+        None => read_fee_amount(e), // Fallback to global fee
+    }
+}
+
+pub fn write_fee_early(e: &Env, amount: &i128) {
+    e.storage().instance().set(&DataKey::FeeEarly, amount);
+}
+
+pub fn try_read_fee_early(e: &Env) -> Option<i128> {
+    e.storage().instance().get(&DataKey::FeeEarly)
+}
+
+pub fn read_fee_early(e: &Env) -> i128 {
+    match try_read_fee_early(e) {
+        Some(v) => v,
+        None => read_fee_amount(e), // Fallback to global fee
+    }
+}
+
+pub fn write_fee_custom(e: &Env, issuer: &Address, amount: &i128) {
+    e.storage().instance().set(&DataKey::FeeCustom(issuer.clone()), amount);
+}
+
+pub fn try_read_fee_custom(e: &Env, issuer: &Address) -> Option<i128> {
+    e.storage().instance().get(&DataKey::FeeCustom(issuer.clone()))
+}
+
+pub fn read_fee_custom(e: &Env, issuer: &Address) -> i128 {
+    match try_read_fee_custom(e, issuer) {
+        Some(v) => v,
+        None => read_fee_amount(e), // Fallback to global fee
     }
 }
 

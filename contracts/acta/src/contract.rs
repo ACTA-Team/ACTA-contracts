@@ -80,6 +80,63 @@ impl ActaTrait for ActaContract {
         storage::write_fee_enabled(&e, &enabled);
     }
 
+    /// Sets fee for admin role (admin-only).
+    ///
+    /// Parameters:
+    /// - `fee_amount`: fee amount in i128 (typically 0 for admin).
+    fn set_fee_admin(e: Env, fee_amount: i128) {
+        validate_contract_admin(&e);
+        storage::write_fee_admin(&e, &fee_amount);
+    }
+
+    /// Sets fee for standard role (admin-only).
+    ///
+    /// Parameters:
+    /// - `fee_amount`: fee amount in i128 (typically 1 USDC = 1000000 for standard).
+    fn set_fee_standard(e: Env, fee_amount: i128) {
+        validate_contract_admin(&e);
+        storage::write_fee_standard(&e, &fee_amount);
+    }
+
+    /// Sets fee for early role (admin-only).
+    ///
+    /// Parameters:
+    /// - `fee_amount`: fee amount in i128 (typically 0.4 USDC = 400000 for early).
+    fn set_fee_early(e: Env, fee_amount: i128) {
+        validate_contract_admin(&e);
+        storage::write_fee_early(&e, &fee_amount);
+    }
+
+    /// Sets custom fee for a specific issuer address (admin-only).
+    ///
+    /// Parameters:
+    /// - `issuer`: issuer address to set custom fee for.
+    /// - `fee_amount`: fee amount in i128.
+    fn set_fee_custom(e: Env, issuer: Address, fee_amount: i128) {
+        validate_contract_admin(&e);
+        storage::write_fee_custom(&e, &issuer, &fee_amount);
+    }
+
+    /// Gets fee for admin role (public read-only).
+    fn get_fee_admin(e: Env) -> i128 {
+        storage::read_fee_admin(&e)
+    }
+
+    /// Gets fee for standard role (public read-only).
+    fn get_fee_standard(e: Env) -> i128 {
+        storage::read_fee_standard(&e)
+    }
+
+    /// Gets fee for early role (public read-only).
+    fn get_fee_early(e: Env) -> i128 {
+        storage::read_fee_early(&e)
+    }
+
+    /// Gets custom fee for a specific issuer address (public read-only).
+    fn get_fee_custom(e: Env, issuer: Address) -> i128 {
+        storage::read_fee_custom(&e, &issuer)
+    }
+
     /// Upgrade contract WASM (admin-only).
     ///
     /// Parameters:
@@ -286,6 +343,7 @@ impl ActaTrait for ActaContract {
     /// - `vault_contract`: kept for backwards-compat; must be this contract.
     /// - `issuer_addr`: issuer address (must sign and be authorized in owner's vault).
     /// - `issuer_did`: issuer DID metadata.
+    /// - `fee_override`: Optional fee amount to override default/role-based fee. If `None`, uses global fee.
     fn issue(
         e: Env,
         owner: Address,
@@ -294,6 +352,7 @@ impl ActaTrait for ActaContract {
         vault_contract: Address,
         issuer_addr: Address,
         issuer_did: String,
+        fee_override: Option<i128>,
     ) -> String {
         // Require issuer signature once (avoid double-auth when calling local vault).
         issuer_addr.require_auth();
@@ -320,6 +379,7 @@ impl ActaTrait for ActaContract {
             &issuer_addr,
             issuer_did,
             this.clone(),
+            fee_override,
         );
 
         // Update status registry in this contract.
@@ -502,6 +562,9 @@ fn issuance_status_to_map(e: &Env, status: VCStatus) -> Map<String, String> {
 /// - vault exists and is active
 /// - issuer is authorized for the vault
 /// - issuer has signed if this call path requires it
+///
+/// `fee_override`: If `Some(amount)`, uses that amount. If `None`, uses role-based fee
+/// (custom fee for issuer, or standard/early/admin based on configuration), or falls back to global fee.
 fn store_vc_payload(
     e: &Env,
     owner: &Address,
@@ -510,19 +573,37 @@ fn store_vc_payload(
     issuer_addr: &Address,
     issuer_did: String,
     issuance_contract: Address,
+    fee_override: Option<i128>,
 ) {
     // Fee charging (if enabled): transfer from issuer -> fee_dest.
     // Note: token contract itself will require auth from `issuer_addr` on transfer.
     if storage::read_fee_enabled(e) {
         let fee_token = storage::read_fee_token_contract(e);
         let fee_dest = storage::read_fee_dest(e);
-        let fee_amount = storage::read_fee_amount(e);
+        
+        // Determine fee amount:
+        // 1. If fee_override is provided, use it
+        // 2. Otherwise, check for custom fee for this issuer
+        // 3. Otherwise, fall back to global fee (which may be role-based)
+        let fee_amount = match fee_override {
+            Some(amount) => amount,
+            None => {
+                // Check for custom fee first
+                match storage::try_read_fee_custom(e, issuer_addr) {
+                    Some(custom_fee) => custom_fee,
+                    None => storage::read_fee_amount(e), // Fallback to global fee
+                }
+            }
+        };
 
-        e.invoke_contract::<()>(
-            &fee_token,
-            &symbol_short!("transfer"),
-            (issuer_addr.clone(), fee_dest, fee_amount).into_val(e),
-        );
+        // Only charge fee if amount > 0
+        if fee_amount > 0 {
+            e.invoke_contract::<()>(
+                &fee_token,
+                &symbol_short!("transfer"),
+                (issuer_addr.clone(), fee_dest, fee_amount).into_val(e),
+            );
+        }
     }
 
     verifiable_credential::store_vc(

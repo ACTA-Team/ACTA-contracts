@@ -39,6 +39,30 @@ pub trait ActaTrait {
     /// Fee charging happens inside `issue` when enabled.
     fn set_fee_config(e: Env, token_contract: Address, fee_dest: Address, fee_amount: i128);
 
+    /// Sets fee for admin role (admin-only).
+    fn set_fee_admin(e: Env, fee_amount: i128);
+
+    /// Sets fee for standard role (admin-only).
+    fn set_fee_standard(e: Env, fee_amount: i128);
+
+    /// Sets fee for early role (admin-only).
+    fn set_fee_early(e: Env, fee_amount: i128);
+
+    /// Sets custom fee for a specific issuer address (admin-only).
+    fn set_fee_custom(e: Env, issuer: Address, fee_amount: i128);
+
+    /// Gets fee for admin role (public read-only).
+    fn get_fee_admin(e: Env) -> i128;
+
+    /// Gets fee for standard role (public read-only).
+    fn get_fee_standard(e: Env) -> i128;
+
+    /// Gets fee for early role (public read-only).
+    fn get_fee_early(e: Env) -> i128;
+
+    /// Gets custom fee for a specific issuer address (public read-only).
+    fn get_fee_custom(e: Env, issuer: Address) -> i128;
+
     /// Upgrades the contract WASM (admin-only).
     fn upgrade(e: Env, new_wasm_hash: BytesN<32>);
 
@@ -117,6 +141,9 @@ pub trait ActaTrait {
     ///
     /// Note: `vault_contract` is kept for backwards-compatibility but the unified contract
     /// always stores in its own vaults.
+    /// 
+    /// `fee_override`: Optional fee amount to override the default fee. If `None`, uses
+    /// the global fee or role-based fee if configured.
     fn issue(
         e: Env,
         owner: Address,
@@ -125,6 +152,7 @@ pub trait ActaTrait {
         vault_contract: Address,
         issuer: Address,
         issuer_did: String,
+        fee_override: Option<i128>,
     ) -> String;
 
     /// Revokes a VC (owner-or-admin).
