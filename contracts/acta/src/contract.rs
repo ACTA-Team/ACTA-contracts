@@ -343,7 +343,8 @@ impl ActaTrait for ActaContract {
     /// - `vault_contract`: kept for backwards-compat; must be this contract.
     /// - `issuer_addr`: issuer address (must sign and be authorized in owner's vault).
     /// - `issuer_did`: issuer DID metadata.
-    /// - `fee_override`: Optional fee amount to override default/role-based fee. If `None`, uses global fee.
+    /// - `fee_override`: Fee amount to override default/role-based fee. If `0`, uses global fee.
+    ///   If `> 0`, uses that amount directly.
     fn issue(
         e: Env,
         owner: Address,
@@ -352,7 +353,7 @@ impl ActaTrait for ActaContract {
         vault_contract: Address,
         issuer_addr: Address,
         issuer_did: String,
-        fee_override: Option<i128>,
+        fee_override: i128,
     ) -> String {
         // Require issuer signature once (avoid double-auth when calling local vault).
         issuer_addr.require_auth();
@@ -563,7 +564,7 @@ fn issuance_status_to_map(e: &Env, status: VCStatus) -> Map<String, String> {
 /// - issuer is authorized for the vault
 /// - issuer has signed if this call path requires it
 ///
-/// `fee_override`: If `Some(amount)`, uses that amount. If `None`, uses role-based fee
+/// `fee_override`: If `> 0`, uses that amount directly. If `0`, uses role-based fee
 /// (custom fee for issuer, or standard/early/admin based on configuration), or falls back to global fee.
 fn store_vc_payload(
     e: &Env,
@@ -573,7 +574,7 @@ fn store_vc_payload(
     issuer_addr: &Address,
     issuer_did: String,
     issuance_contract: Address,
-    fee_override: Option<i128>,
+    fee_override: i128,
 ) {
     // Fee charging (if enabled): transfer from issuer -> fee_dest.
     // Note: token contract itself will require auth from `issuer_addr` on transfer.
@@ -582,17 +583,16 @@ fn store_vc_payload(
         let fee_dest = storage::read_fee_dest(e);
         
         // Determine fee amount:
-        // 1. If fee_override is provided, use it
-        // 2. Otherwise, check for custom fee for this issuer
+        // 1. If fee_override > 0, use it directly
+        // 2. Otherwise (fee_override == 0), check for custom fee for this issuer
         // 3. Otherwise, fall back to global fee (which may be role-based)
-        let fee_amount = match fee_override {
-            Some(amount) => amount,
-            None => {
-                // Check for custom fee first
-                match storage::try_read_fee_custom(e, issuer_addr) {
-                    Some(custom_fee) => custom_fee,
-                    None => storage::read_fee_amount(e), // Fallback to global fee
-                }
+        let fee_amount = if fee_override > 0 {
+            fee_override
+        } else {
+            // Check for custom fee first
+            match storage::try_read_fee_custom(e, issuer_addr) {
+                Some(custom_fee) => custom_fee,
+                None => storage::read_fee_amount(e), // Fallback to global fee
             }
         };
 

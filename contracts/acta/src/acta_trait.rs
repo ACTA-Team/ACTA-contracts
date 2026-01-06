@@ -142,8 +142,8 @@ pub trait ActaTrait {
     /// Note: `vault_contract` is kept for backwards-compatibility but the unified contract
     /// always stores in its own vaults.
     /// 
-    /// `fee_override`: Optional fee amount to override the default fee. If `None`, uses
-    /// the global fee or role-based fee if configured.
+    /// `fee_override`: Fee amount to override the default fee. If `0`, uses
+    /// the global fee or role-based fee if configured. If `> 0`, uses that amount directly.
     fn issue(
         e: Env,
         owner: Address,
@@ -152,7 +152,7 @@ pub trait ActaTrait {
         vault_contract: Address,
         issuer: Address,
         issuer_did: String,
-        fee_override: Option<i128>,
+        fee_override: i128,
     ) -> String;
 
     /// Revokes a VC (owner-or-admin).
