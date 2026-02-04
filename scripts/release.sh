@@ -5,13 +5,13 @@ soroban config network add testnet \
   --network-passphrase "Test SDF Network ; September 2015" || true
 
 # Generate key to sign the transactions.
-soroban keys generate acta_admin --network testnet || true
+soroban keys generate vc_vault_admin --network testnet || true
 
 # Build + optimize
 sh scripts/build.sh
 
-echo "ACTA unified contract ID:"
+echo "VC Vault contract ID:"
 soroban contract deploy \
-  --wasm target/wasm32v1-none/release/acta_contract.optimized.wasm \
-  --source acta_admin \
+  --wasm target/wasm32v1-none/release/vc_vault_contract.optimized.wasm \
+  --source vc_vault_admin \
   --network testnet

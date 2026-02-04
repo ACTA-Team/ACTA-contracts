@@ -6,7 +6,7 @@ ACTA Verifiable Credentials on Soroban: **vault storage + issuance status regist
 
 This repo contains a single Soroban contract located at:
 
-- **`contracts/contracts/acta/`**: unified contract that includes:
+- **`contracts/vc-vault/`**: unified contract that includes:
   - **Vault (per owner)**: `create_vault`, issuer authorization, `list_vc_ids`, `get_vc`, `push`, `revoke_vault`, `set_vault_admin`
   - **Issuance (status registry)**: `issue`, `verify_vc`, `revoke`
   - **Admin**: `initialize`, `set_contract_admin`, fee config (`set_fee_config`, `set_fee_enabled`), `upgrade`, `version`
@@ -39,13 +39,13 @@ bash scripts/build.sh
 
 ```bash
 soroban contract build
-soroban contract optimize --wasm target/wasm32v1-none/release/acta_contract.wasm
+soroban contract optimize --wasm target/wasm32v1-none/release/vc_vault_contract.wasm
 ```
 
 Build outputs:
 
-- `target/wasm32v1-none/release/acta_contract.wasm`
-- `target/wasm32v1-none/release/acta_contract.optimized.wasm`
+- `target/wasm32v1-none/release/vc_vault_contract.wasm`
+- `target/wasm32v1-none/release/vc_vault_contract.optimized.wasm`
 
 ## Deploy (Testnet)
 
@@ -64,7 +64,7 @@ chmod +x scripts/release.sh
 bash scripts/release.sh
 ```
 
-The script configures testnet (idempotent), generates `acta_admin` (idempotent), builds/optimizes, and deploys the unified contract.
+The script configures testnet (idempotent), generates `vc_vault_admin` (idempotent), builds/optimizes, and deploys the unified contract.
 
 ## License
 

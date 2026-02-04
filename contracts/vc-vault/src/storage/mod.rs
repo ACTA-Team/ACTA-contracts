@@ -1,61 +1,37 @@
-use crate::vc_status::VCStatus;
-use crate::verifiable_credential::VerifiableCredential;
+use crate::model::{VCStatus, VerifiableCredential};
 use soroban_sdk::{contracttype, Address, Env, Map, String, Vec};
 
+/// TTL extension thresholds and targets (ledger counts).
+const INSTANCE_TTL_THRESHOLD: u32 = 2000;
+const INSTANCE_TTL_EXTEND_TO: u32 = 10_000;
+const PERSISTENT_TTL_THRESHOLD: u32 = 1000;
+const PERSISTENT_TTL_EXTEND_TO: u32 = 5_000;
+
 /// Unified storage keys.
-///
-/// Instance storage:
-/// - Global config only (admin, fees, default issuer DID).
-/// Persistent storage:
-/// - Per-owner vault metadata (admin, DID, revoked).
-/// - VC payloads, VC id indexes, issuer lists, and issuance status registry.
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
-    // -----------------
-    // Global config
-    // -----------------
-    ContractAdmin,          // Address
-    DefaultIssuerDid,       // String
-
-    // Global fee configuration (instance storage)
-    FeeEnabled,             // bool
-    FeeTokenContract,       // Address
-    FeeDest,                // Address
-    FeeAmount,              // i128
-
-    // Role-based fee configuration (instance storage)
-    FeeAdmin,               // i128 - fee for admin role (typically 0)
-    FeeStandard,            // i128 - fee for standard role (typically 1 USDC)
-    FeeEarly,               // i128 - fee for early role (typically 0.4 USDC)
-    FeeCustom(Address),     // i128 - custom fee per issuer address
-
-    // -----------------
-    // Vault (per owner, persistent)
-    // -----------------
-    VaultAdmin(Address),    // Address
-    VaultDid(Address),      // String
-    VaultRevoked(Address),  // bool
-
-    // Issuer list per owner
-    VaultIssuers(Address),  // Vec<Address>
-
-    // VC payload per owner (persistent)
-    VaultVC(Address, String), // VerifiableCredential
-    VaultVCIds(Address),      // Vec<String>
-
-    // -----------------
-    // Issuance registry
-    // -----------------
-    VCStatus(String),       // VCStatus
-    VCOwner(String),        // Address
-
-    // -----------------
-    // Legacy keys (for migration)
-    // -----------------
-    LegacyIssuanceRevocations, // Map<String, LegacyRevocation>
-    LegacyIssuanceVCs,         // Vec<String>
-    LegacyVaultVCs(Address),   // Vec<VerifiableCredential>
+    ContractAdmin,
+    DefaultIssuerDid,
+    FeeEnabled,
+    FeeTokenContract,
+    FeeDest,
+    FeeAmount,
+    FeeAdmin,
+    FeeStandard,
+    FeeEarly,
+    FeeCustom(Address),
+    VaultAdmin(Address),
+    VaultDid(Address),
+    VaultRevoked(Address),
+    VaultIssuers(Address),
+    VaultVC(Address, String),
+    VaultVCIds(Address),
+    VCStatus(String),
+    VCOwner(String),
+    LegacyIssuanceRevocations,
+    LegacyIssuanceVCs,
+    LegacyVaultVCs(Address),
 }
 
 #[contracttype]
@@ -64,10 +40,6 @@ pub struct LegacyRevocation {
     pub vc_id: String,
     pub date: String,
 }
-
-// -----------------
-// Global config
-// -----------------
 
 pub fn has_contract_admin(e: &Env) -> bool {
     e.storage().instance().has(&DataKey::ContractAdmin)
@@ -88,10 +60,6 @@ pub fn read_default_issuer_did(e: &Env) -> Option<String> {
 pub fn write_default_issuer_did(e: &Env, did: &String) {
     e.storage().instance().set(&DataKey::DefaultIssuerDid, did);
 }
-
-// -----------------
-// Fee config
-// -----------------
 
 pub fn read_fee_enabled(e: &Env) -> bool {
     match e.storage().instance().get(&DataKey::FeeEnabled) {
@@ -128,23 +96,15 @@ pub fn read_fee_amount(e: &Env) -> i128 {
     e.storage().instance().get(&DataKey::FeeAmount).unwrap()
 }
 
-/// Fee configuration status (read-only public function return type).
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FeeConfig {
-    /// Whether fees are enabled.
     pub enabled: bool,
-    /// Whether fee configuration is set (token_contract, fee_dest, fee_amount are all set).
     pub configured: bool,
-    /// Token contract address (if configured).
     pub token_contract: Option<Address>,
-    /// Fee destination address (if configured).
     pub fee_dest: Option<Address>,
-    /// Fee amount (if configured).
     pub fee_amount: Option<i128>,
 }
-
-// Helper functions to safely read fee config (returning Option)
 
 pub fn try_read_fee_token_contract(e: &Env) -> Option<Address> {
     e.storage().instance().get(&DataKey::FeeTokenContract)
@@ -158,16 +118,12 @@ pub fn try_read_fee_amount(e: &Env) -> Option<i128> {
     e.storage().instance().get(&DataKey::FeeAmount)
 }
 
-/// Reads the complete fee configuration status (public read-only function).
 pub fn read_fee_config(e: &Env) -> FeeConfig {
     let enabled = read_fee_enabled(e);
     let token_contract = try_read_fee_token_contract(e);
     let fee_dest = try_read_fee_dest(e);
     let fee_amount = try_read_fee_amount(e);
-    
-    // Fee is considered configured if all three values are set
     let configured = token_contract.is_some() && fee_dest.is_some() && fee_amount.is_some();
-    
     FeeConfig {
         enabled,
         configured,
@@ -176,10 +132,6 @@ pub fn read_fee_config(e: &Env) -> FeeConfig {
         fee_amount,
     }
 }
-
-// -----------------
-// Role-based fee config
-// -----------------
 
 pub fn write_fee_admin(e: &Env, amount: &i128) {
     e.storage().instance().set(&DataKey::FeeAdmin, amount);
@@ -190,10 +142,7 @@ pub fn try_read_fee_admin(e: &Env) -> Option<i128> {
 }
 
 pub fn read_fee_admin(e: &Env) -> i128 {
-    match try_read_fee_admin(e) {
-        Some(v) => v,
-        None => 0, // Default admin fee is 0
-    }
+    try_read_fee_admin(e).unwrap_or(0)
 }
 
 pub fn write_fee_standard(e: &Env, amount: &i128) {
@@ -205,10 +154,7 @@ pub fn try_read_fee_standard(e: &Env) -> Option<i128> {
 }
 
 pub fn read_fee_standard(e: &Env) -> i128 {
-    match try_read_fee_standard(e) {
-        Some(v) => v,
-        None => 1_000_000, // Default: 1 USDC (1,000,000 units)
-    }
+    try_read_fee_standard(e).unwrap_or(1_000_000)
 }
 
 pub fn write_fee_early(e: &Env, amount: &i128) {
@@ -220,10 +166,7 @@ pub fn try_read_fee_early(e: &Env) -> Option<i128> {
 }
 
 pub fn read_fee_early(e: &Env) -> i128 {
-    match try_read_fee_early(e) {
-        Some(v) => v,
-        None => 400_000, // Default: 0.4 USDC (400,000 units)
-    }
+    try_read_fee_early(e).unwrap_or(400_000)
 }
 
 pub fn write_fee_custom(e: &Env, issuer: &Address, amount: &i128) {
@@ -235,15 +178,8 @@ pub fn try_read_fee_custom(e: &Env, issuer: &Address) -> Option<i128> {
 }
 
 pub fn read_fee_custom(e: &Env, issuer: &Address) -> i128 {
-    match try_read_fee_custom(e, issuer) {
-        Some(v) => v,
-        None => read_fee_amount(e), // Fallback to global fee
-    }
+    try_read_fee_custom(e, issuer).unwrap_or_else(|| read_fee_amount(e))
 }
-
-// -----------------
-// Vault metadata (persistent - per-owner, can grow)
-// -----------------
 
 pub fn has_vault_admin(e: &Env, owner: &Address) -> bool {
     e.storage().persistent().has(&DataKey::VaultAdmin(owner.clone()))
@@ -285,10 +221,6 @@ pub fn write_vault_revoked(e: &Env, owner: &Address, revoked: &bool) {
         .set(&DataKey::VaultRevoked(owner.clone()), revoked);
 }
 
-// -----------------
-// Vault issuers (persistent)
-// -----------------
-
 pub fn read_vault_issuers(e: &Env, owner: &Address) -> Vec<Address> {
     e.storage().persistent().get(&DataKey::VaultIssuers(owner.clone())).unwrap()
 }
@@ -296,10 +228,6 @@ pub fn read_vault_issuers(e: &Env, owner: &Address) -> Vec<Address> {
 pub fn write_vault_issuers(e: &Env, owner: &Address, issuers: &Vec<Address>) {
     e.storage().persistent().set(&DataKey::VaultIssuers(owner.clone()), issuers)
 }
-
-// -----------------
-// Vault VC payloads (persistent)
-// -----------------
 
 pub fn write_vault_vc(e: &Env, owner: &Address, vc_id: &String, vc: &VerifiableCredential) {
     e.storage().persistent().set(&DataKey::VaultVC(owner.clone(), vc_id.clone()), vc)
@@ -340,10 +268,6 @@ pub fn remove_vault_vc_id(e: &Env, owner: &Address, vc_id: &String) {
     }
 }
 
-// -----------------
-// Issuance status registry (persistent)
-// -----------------
-
 pub fn write_vc_status(e: &Env, vc_id: &String, status: &VCStatus) {
     e.storage().persistent().set(&DataKey::VCStatus(vc_id.clone()), status)
 }
@@ -363,9 +287,55 @@ pub fn read_vc_owner(e: &Env, vc_id: &String) -> Option<Address> {
     e.storage().persistent().get(&DataKey::VCOwner(vc_id.clone()))
 }
 
-// -----------------
-// Legacy migrations
-// -----------------
+pub fn extend_instance_ttl(e: &Env) {
+    e.storage()
+        .instance()
+        .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
+}
+
+pub fn extend_vault_ttl(e: &Env, owner: &Address) {
+    let keys = [
+        DataKey::VaultAdmin(owner.clone()),
+        DataKey::VaultDid(owner.clone()),
+        DataKey::VaultRevoked(owner.clone()),
+        DataKey::VaultIssuers(owner.clone()),
+        DataKey::VaultVCIds(owner.clone()),
+    ];
+    for key in keys {
+        if e.storage().persistent().has(&key) {
+            e.storage()
+                .persistent()
+                .extend_ttl(&key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn extend_vc_ttl(e: &Env, owner: &Address, vc_id: &String) {
+    let vc_key = DataKey::VaultVC(owner.clone(), vc_id.clone());
+    let ids_key = DataKey::VaultVCIds(owner.clone());
+    let status_key = DataKey::VCStatus(vc_id.clone());
+    let owner_key = DataKey::VCOwner(vc_id.clone());
+    for key in [&vc_key, &ids_key, &status_key, &owner_key] {
+        if e.storage().persistent().has(key) {
+            e.storage()
+                .persistent()
+                .extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
+        }
+    }
+}
+
+pub fn extend_vc_status_ttl(e: &Env, vc_id: &String) {
+    for key in [
+        DataKey::VCStatus(vc_id.clone()),
+        DataKey::VCOwner(vc_id.clone()),
+    ] {
+        if e.storage().persistent().has(&key) {
+            e.storage()
+                .persistent()
+                .extend_ttl(&key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
+        }
+    }
+}
 
 pub fn read_legacy_issuance_vcs(e: &Env) -> Option<Vec<String>> {
     e.storage().persistent().get(&DataKey::LegacyIssuanceVCs)

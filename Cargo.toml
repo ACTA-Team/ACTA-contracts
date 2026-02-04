@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["contracts/acta"]
+members = ["contracts/vc-vault"]
 
 [workspace.package]
 version = "0.20.0"

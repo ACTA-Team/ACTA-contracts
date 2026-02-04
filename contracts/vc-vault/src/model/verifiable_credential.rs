@@ -1,5 +1,4 @@
-use crate::storage;
-use soroban_sdk::{contracttype, Address, Env, String};
+use soroban_sdk::{contracttype, Address, String};
 
 /// Verifiable Credential stored in a vault.
 ///
@@ -18,23 +17,4 @@ pub struct VerifiableCredential {
 
     /// Issuer DID (metadata for wallets/UX).
     pub issuer_did: String,
-}
-
-pub fn store_vc(
-    e: &Env,
-    owner: &Address,
-    id: String,
-    data: String,
-    issuance_contract: Address,
-    issuer_did: String,
-) {
-    let new_vc: VerifiableCredential = VerifiableCredential {
-        id: id.clone(),
-        data,
-        issuance_contract,
-        issuer_did,
-    };
-
-    storage::write_vault_vc(e, owner, &id, &new_vc);
-    storage::append_vault_vc_id(e, owner, &id);
 }

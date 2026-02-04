@@ -1,7 +1,9 @@
-use crate::acta_trait::ActaTrait;
+use crate::api::VcVaultTrait;
 use crate::error::ContractError;
-use crate::{issuer, storage, vc_status, verifiable_credential};
-use crate::vc_status::VCStatus;
+use crate::issuance;
+use crate::model::VCStatus;
+use crate::storage;
+use crate::vault;
 use soroban_sdk::{
     contract, contractimpl, contractmeta, panic_with_error, symbol_short, Address, BytesN, Env,
     IntoVal, Map, String, Vec,
@@ -11,286 +13,188 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 contractmeta!(
     key = "Description",
-    val = "ACTA Unified Contract: Vault + Issuance (VC storage & status registry)",
+    val = "VC Vault: Verifiable Credential storage + issuance status registry",
 );
 
-/// ACTA Unified Contract.
-///
-/// Combines:
-/// - Vault features (multi-tenant per owner)
-/// - Issuance status registry (valid/revoked/invalid)
 #[allow(dead_code)]
 #[contract]
-pub struct ActaContract;
+pub struct VcVaultContract;
 
 #[contractimpl]
-impl ActaTrait for ActaContract {
-    // -----------------------------
-    // Global configuration
-    // -----------------------------
-
-    /// Initialize global configuration (one-time).
-    ///
-    /// Parameters:
-    /// - `contract_admin`: global admin address (must sign).
-    /// - `default_issuer_did`: default issuer DID metadata (string).
+impl VcVaultTrait for VcVaultContract {
     fn initialize(e: Env, contract_admin: Address, default_issuer_did: String) {
-        // Prevent hostile initialization: the chosen admin must sign.
         contract_admin.require_auth();
-
         if storage::has_contract_admin(&e) {
             panic_with_error!(e, ContractError::AlreadyInitialized);
         }
         storage::write_contract_admin(&e, &contract_admin);
         storage::write_default_issuer_did(&e, &default_issuer_did);
-
-        // Default fee disabled.
         storage::write_fee_enabled(&e, &false);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Set global contract admin (admin-only).
-    ///
-    /// Parameters:
-    /// - `new_admin`: new admin address.
     fn set_contract_admin(e: Env, new_admin: Address) {
-        let admin = validate_contract_admin(&e);
-        let _ = admin; // keep for readability
+        let _ = validate_contract_admin(&e);
         storage::write_contract_admin(&e, &new_admin);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Configure global fee (admin-only).
-    ///
-    /// Parameters:
-    /// - `token_contract`: Soroban token contract address used for charging.
-    /// - `fee_dest`: destination address to receive fees.
-    /// - `fee_amount`: amount to transfer on each issuance/store (i128).
     fn set_fee_config(e: Env, token_contract: Address, fee_dest: Address, fee_amount: i128) {
         validate_contract_admin(&e);
         storage::write_fee_token_contract(&e, &token_contract);
         storage::write_fee_dest(&e, &fee_dest);
         storage::write_fee_amount(&e, &fee_amount);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Enable/disable fee charging (admin-only).
-    ///
-    /// Parameters:
-    /// - `enabled`: `true` to charge fees on issuance, `false` otherwise.
     fn set_fee_enabled(e: Env, enabled: bool) {
         validate_contract_admin(&e);
         storage::write_fee_enabled(&e, &enabled);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Sets fee for admin role (admin-only).
-    ///
-    /// Parameters:
-    /// - `fee_amount`: fee amount in i128 (typically 0 for admin).
     fn set_fee_admin(e: Env, fee_amount: i128) {
         validate_contract_admin(&e);
         storage::write_fee_admin(&e, &fee_amount);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Sets fee for standard role (admin-only).
-    ///
-    /// Parameters:
-    /// - `fee_amount`: fee amount in i128 (typically 1 USDC = 1000000 for standard).
     fn set_fee_standard(e: Env, fee_amount: i128) {
         validate_contract_admin(&e);
         storage::write_fee_standard(&e, &fee_amount);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Sets fee for early role (admin-only).
-    ///
-    /// Parameters:
-    /// - `fee_amount`: fee amount in i128 (typically 0.4 USDC = 400000 for early).
     fn set_fee_early(e: Env, fee_amount: i128) {
         validate_contract_admin(&e);
         storage::write_fee_early(&e, &fee_amount);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Sets custom fee for a specific issuer address (admin-only).
-    ///
-    /// Parameters:
-    /// - `issuer`: issuer address to set custom fee for.
-    /// - `fee_amount`: fee amount in i128.
     fn set_fee_custom(e: Env, issuer: Address, fee_amount: i128) {
         validate_contract_admin(&e);
         storage::write_fee_custom(&e, &issuer, &fee_amount);
+        storage::extend_instance_ttl(&e);
     }
 
-    /// Gets fee for admin role (public read-only).
     fn get_fee_admin(e: Env) -> i128 {
+        storage::extend_instance_ttl(&e);
         storage::read_fee_admin(&e)
     }
 
-    /// Gets fee for standard role (public read-only).
     fn get_fee_standard(e: Env) -> i128 {
+        storage::extend_instance_ttl(&e);
         storage::read_fee_standard(&e)
     }
 
-    /// Gets fee for early role (public read-only).
     fn get_fee_early(e: Env) -> i128 {
+        storage::extend_instance_ttl(&e);
         storage::read_fee_early(&e)
     }
 
-    /// Gets custom fee for a specific issuer address (public read-only).
     fn get_fee_custom(e: Env, issuer: Address) -> i128 {
+        storage::extend_instance_ttl(&e);
         storage::read_fee_custom(&e, &issuer)
     }
 
-    /// Upgrade contract WASM (admin-only).
-    ///
-    /// Parameters:
-    /// - `new_wasm_hash`: hash of the new WASM code.
     fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
         validate_contract_admin(&e);
+        storage::extend_instance_ttl(&e);
         e.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 
-    /// Return the deployed contract version string.
     fn version(e: Env) -> String {
         String::from_str(&e, VERSION)
     }
 
-    /// Returns fee configuration status (public read-only, no signature required).
-    ///
-    /// Returns:
-    /// - `enabled`: whether fees are enabled.
-    /// - `configured`: whether fee configuration is set (token_contract, fee_dest, fee_amount are all set).
-    /// - `token_contract`: token contract address (if configured).
-    /// - `fee_dest`: fee destination address (if configured).
-    /// - `fee_amount`: fee amount (if configured).
     fn fee_config(e: Env) -> storage::FeeConfig {
+        storage::extend_instance_ttl(&e);
         storage::read_fee_config(&e)
     }
 
-    // -----------------------------
-    // Vault (per owner)
-    // -----------------------------
-
-    /// Create/initialize a vault for an owner (one-time per owner).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address (must sign).
-    /// - `did_uri`: DID URI metadata for the owner.
     fn create_vault(e: Env, owner: Address, did_uri: String) {
-        // Prevent griefing: only the owner can initialize their own vault metadata.
         owner.require_auth();
-
-        // If global admin is not initialized, keep backwards-compat UX:
-        // first vault creator becomes global admin.
         if !storage::has_contract_admin(&e) {
             storage::write_contract_admin(&e, &owner);
-            // fee disabled by default
             storage::write_fee_enabled(&e, &false);
+            storage::extend_instance_ttl(&e);
         }
-
         if storage::has_vault_admin(&e, &owner) {
             panic_with_error!(e, ContractError::AlreadyInitialized);
         }
-
         storage::write_vault_admin(&e, &owner, &owner);
         storage::write_vault_did(&e, &owner, &did_uri);
         storage::write_vault_revoked(&e, &owner, &false);
         storage::write_vault_issuers(&e, &owner, &Vec::new(&e));
+        storage::extend_vault_ttl(&e, &owner);
     }
 
-    /// Set the per-vault admin (current vault admin must sign).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address (selects which vault).
-    /// - `new_admin`: new admin address for that vault.
     fn set_vault_admin(e: Env, owner: Address, new_admin: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
         storage::write_vault_admin(&e, &owner, &new_admin);
+        storage::extend_vault_ttl(&e, &owner);
     }
 
-    /// Replace the full authorized issuer list for a vault (vault admin-only).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address.
-    /// - `issuers`: list of issuer addresses allowed to issue into this vault.
     fn authorize_issuers(e: Env, owner: Address, issuers: Vec<Address>) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
-        issuer::authorize_issuers(&e, &owner, &issuers);
+        vault::authorize_issuers(&e, &owner, &issuers);
+        storage::extend_vault_ttl(&e, &owner);
     }
 
-    /// Add a single authorized issuer to a vault (vault admin-only).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address.
-    /// - `issuer_addr`: issuer address to authorize.
     fn authorize_issuer(e: Env, owner: Address, issuer_addr: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
-        issuer::authorize_issuer(&e, &owner, &issuer_addr);
+        vault::authorize_issuer(&e, &owner, &issuer_addr);
+        storage::extend_vault_ttl(&e, &owner);
     }
 
-    /// Remove a single issuer from the authorized issuer list (vault admin-only).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address.
-    /// - `issuer_addr`: issuer address to revoke.
     fn revoke_issuer(e: Env, owner: Address, issuer_addr: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
-        issuer::revoke_issuer(&e, &owner, &issuer_addr)
+        vault::revoke_issuer(&e, &owner, &issuer_addr);
+        storage::extend_vault_ttl(&e, &owner);
     }
 
-    /// Revoke a vault (vault admin-only). Blocks future writes.
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address.
     fn revoke_vault(e: Env, owner: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
         storage::write_vault_revoked(&e, &owner, &true);
+        storage::extend_vault_ttl(&e, &owner);
     }
 
-    /// List VC IDs stored in a vault.
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address.
     fn list_vc_ids(e: Env, owner: Address) -> Vec<String> {
+        storage::extend_vault_ttl(&e, &owner);
         storage::read_vault_vc_ids(&e, &owner)
     }
 
-    /// Get a VC payload from a vault (public read).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address.
-    /// - `vc_id`: VC identifier.
     fn get_vc(
         e: Env,
         owner: Address,
         vc_id: String,
-    ) -> Option<verifiable_credential::VerifiableCredential> {
-        storage::read_vault_vc(&e, &owner, &vc_id)
+    ) -> Option<crate::model::VerifiableCredential> {
+        storage::extend_vault_ttl(&e, &owner);
+        let vc = storage::read_vault_vc(&e, &owner, &vc_id);
+        if vc.is_some() {
+            storage::extend_vc_ttl(&e, &owner, &vc_id);
+        }
+        vc
     }
 
-    /// Verify a VC status via the issuance registry (public read).
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner address (used only to check that the VC exists in that vault).
-    /// - `vc_id`: VC identifier.
     fn verify_vc(e: Env, owner: Address, vc_id: String) -> Map<String, String> {
-        // if not present in vault => invalid
+        storage::extend_vault_ttl(&e, &owner);
         let vc_opt = storage::read_vault_vc(&e, &owner, &vc_id);
         if vc_opt.is_none() {
             return issuance_status_to_map(&e, VCStatus::Invalid);
         }
-
         let vc = vc_opt.unwrap();
+        storage::extend_vc_ttl(&e, &owner, &vc_id);
         let issuance_contract = vc.issuance_contract;
-
-        // If issuance contract is this contract, resolve locally.
         if issuance_contract == e.current_contract_address() {
             let status = storage::read_vc_status(&e, &vc_id);
             return issuance_status_to_map(&e, status);
         }
-
-        // Otherwise, delegate to the external issuance contract's `verify(vc_id)`.
         e.invoke_contract::<Map<String, String>>(
             &issuance_contract,
             &symbol_short!("verify"),
@@ -298,23 +202,12 @@ impl ActaTrait for ActaContract {
         )
     }
 
-    /// Move a VC from one owner's vault to another.
-    ///
-    /// Parameters:
-    /// - `from_owner`: origin vault owner (must sign).
-    /// - `to_owner`: destination vault owner.
-    /// - `vc_id`: VC identifier to move.
-    /// - `issuer_addr`: issuer address that must be authorized in `from_owner` vault (no signature required).
     fn push(e: Env, from_owner: Address, to_owner: Address, vc_id: String, issuer_addr: Address) {
         validate_vault_active(&e, &from_owner);
         validate_vault_active(&e, &to_owner);
         validate_vault_initialized(&e, &from_owner);
         validate_vault_initialized(&e, &to_owner);
-
-        // Only the origin owner signs.
         from_owner.require_auth();
-
-        // Issuer must be authorized in origin vault (signature not required).
         validate_issuer_authorized_only(&e, &from_owner, &issuer_addr);
 
         let vc_opt = storage::read_vault_vc(&e, &from_owner, &vc_id);
@@ -325,26 +218,14 @@ impl ActaTrait for ActaContract {
 
         storage::remove_vault_vc(&e, &from_owner, &vc_id);
         storage::remove_vault_vc_id(&e, &from_owner, &vc_id);
-
         storage::write_vault_vc(&e, &to_owner, &vc_id, &vc);
         storage::append_vault_vc_id(&e, &to_owner, &vc_id);
+
+        storage::extend_vault_ttl(&e, &from_owner);
+        storage::extend_vault_ttl(&e, &to_owner);
+        storage::extend_vc_ttl(&e, &to_owner, &vc_id);
     }
 
-    // -----------------------------
-    // Issuance
-    // -----------------------------
-
-    /// Issue a VC: stores payload in vault + writes issuance status = `valid`.
-    ///
-    /// Parameters:
-    /// - `owner`: vault owner that will receive the VC.
-    /// - `vc_id`: VC identifier (application-defined).
-    /// - `vc_data`: VC payload (ciphertext only).
-    /// - `vault_contract`: kept for backwards-compat; must be this contract.
-    /// - `issuer_addr`: issuer address (must sign and be authorized in owner's vault).
-    /// - `issuer_did`: issuer DID metadata.
-    /// - `fee_override`: Fee amount to override default/role-based fee. If `0`, uses global fee.
-    ///   If `> 0`, uses that amount directly.
     fn issue(
         e: Env,
         owner: Address,
@@ -355,19 +236,11 @@ impl ActaTrait for ActaContract {
         issuer_did: String,
         fee_override: i128,
     ) -> String {
-        // Require issuer signature once (avoid double-auth when calling local vault).
         issuer_addr.require_auth();
-
         let this = e.current_contract_address();
-
-        // Unified contract only: vault must be this contract (param kept for older clients).
         if vault_contract != this {
             panic_with_error!(e, ContractError::InvalidVaultContract);
         }
-
-        // Local vault path:
-        // - issuer already signed above
-        // - we still must ensure issuer is authorized for the owner's vault
         validate_vault_active(&e, &owner);
         validate_vault_initialized(&e, &owner);
         validate_issuer_authorized_only(&e, &owner, &issuer_addr);
@@ -383,53 +256,36 @@ impl ActaTrait for ActaContract {
             fee_override,
         );
 
-        // Update status registry in this contract.
         storage::write_vc_status(&e, &vc_id, &VCStatus::Valid);
         storage::write_vc_owner(&e, &vc_id, &owner);
+        storage::extend_vault_ttl(&e, &owner);
+        storage::extend_vc_ttl(&e, &owner, &vc_id);
 
         vc_id
     }
 
-    /// Revoke a VC by ID.
-    ///
-    /// Parameters:
-    /// - `vc_id`: VC identifier.
-    /// - `date`: revocation date string (recommended ISO-8601).
     fn revoke(e: Env, vc_id: String, date: String) {
         validate_vc_exists(&e, &vc_id);
-
         match storage::read_vc_owner(&e, &vc_id) {
             Some(owner) => owner.require_auth(),
             None => {
-                // Fallback to contract admin if owner not recorded.
-                validate_contract_admin(&e);
+                let _ = validate_contract_admin(&e);
             }
         }
-
-        vc_status::revoke_vc(&e, vc_id, date);
+        issuance::revoke_vc(&e, vc_id.clone(), date);
+        storage::extend_vc_status_ttl(&e, &vc_id);
     }
 
-    // -----------------------------
-    // Migrations
-    // -----------------------------
-
-    /// Migrate legacy storage layouts.
-    ///
-    /// Parameters:
-    /// - `owner`: `Some(owner)` migrates that owner's vault legacy VCs; `None` migrates legacy issuance registry.
     fn migrate(e: Env, owner: Option<Address>) {
         match owner {
             Some(owner) => {
-                // Vault legacy migration is per-owner and requires vault admin.
                 validate_vault_admin(&e, &owner);
-
                 let vcs = storage::read_legacy_vault_vcs(&e, &owner);
                 if vcs.is_none() {
                     panic_with_error!(e, ContractError::VCSAlreadyMigrated)
                 }
-
                 for vc in vcs.unwrap().iter() {
-                    verifiable_credential::store_vc(
+                    vault::store_vc(
                         &e,
                         &owner,
                         vc.id.clone(),
@@ -438,20 +294,17 @@ impl ActaTrait for ActaContract {
                         vc.issuer_did.clone(),
                     );
                 }
-
                 storage::remove_legacy_vault_vcs(&e, &owner);
+                storage::extend_vault_ttl(&e, &owner);
             }
             None => {
-                // Issuance legacy migration is contract-admin only.
                 validate_contract_admin(&e);
-
+                storage::extend_instance_ttl(&e);
                 let vcs = storage::read_legacy_issuance_vcs(&e);
                 if vcs.is_none() {
                     panic_with_error!(e, ContractError::VCSAlreadyMigrated)
                 }
-
                 let revocations = storage::read_legacy_issuance_revocations(&e);
-
                 for vc_id in vcs.unwrap().iter() {
                     match revocations.get(vc_id.clone()) {
                         Some(revocation) => {
@@ -459,8 +312,8 @@ impl ActaTrait for ActaContract {
                         }
                         None => storage::write_vc_status(&e, &vc_id, &VCStatus::Valid),
                     }
+                    storage::extend_vc_status_ttl(&e, &vc_id);
                 }
-
                 storage::remove_legacy_issuance_vcs(&e);
                 storage::remove_legacy_issuance_revocations(&e);
             }
@@ -468,15 +321,10 @@ impl ActaTrait for ActaContract {
     }
 }
 
-// -----------------------------
-// Validation helpers
-// -----------------------------
-
 fn validate_contract_admin(e: &Env) -> Address {
     if !storage::has_contract_admin(e) {
         panic_with_error!(e, ContractError::NotInitialized)
     }
-
     let admin = storage::read_contract_admin(e);
     admin.require_auth();
     admin
@@ -496,35 +344,21 @@ fn validate_vault_admin(e: &Env, owner: &Address) {
 
 fn validate_vault_active(e: &Env, owner: &Address) {
     validate_vault_initialized(e, owner);
-    let revoked = storage::read_vault_revoked(e, owner);
-    if revoked {
+    if storage::read_vault_revoked(e, owner) {
         panic_with_error!(e, ContractError::VaultRevoked)
     }
 }
 
-fn validate_issuer_signed_and_authorized(e: &Env, owner: &Address, issuer_addr: &Address) {
-    validate_vault_initialized(e, owner);
-
-    let issuers: Vec<Address> = storage::read_vault_issuers(e, owner);
-    if !issuer::is_authorized(&issuers, issuer_addr) {
-        panic_with_error!(e, ContractError::IssuerNotAuthorized)
-    }
-
-    issuer_addr.require_auth();
-}
-
 fn validate_issuer_authorized_only(e: &Env, owner: &Address, issuer_addr: &Address) {
     validate_vault_initialized(e, owner);
-
-    let issuers: Vec<Address> = storage::read_vault_issuers(e, owner);
-    if !issuer::is_authorized(&issuers, issuer_addr) {
+    let issuers = storage::read_vault_issuers(e, owner);
+    if !vault::is_authorized(&issuers, issuer_addr) {
         panic_with_error!(e, ContractError::IssuerNotAuthorized)
     }
 }
 
 fn validate_vc_exists(e: &Env, vc_id: &String) {
-    let status = storage::read_vc_status(e, vc_id);
-    if status == VCStatus::Invalid {
+    if storage::read_vc_status(e, vc_id) == VCStatus::Invalid {
         panic_with_error!(e, ContractError::VCNotFound)
     }
 }
@@ -532,11 +366,9 @@ fn validate_vc_exists(e: &Env, vc_id: &String) {
 fn issuance_status_to_map(e: &Env, status: VCStatus) -> Map<String, String> {
     let status_k = String::from_str(e, "status");
     let since_k = String::from_str(e, "since");
-
     let revoked_v = String::from_str(e, "revoked");
     let valid_v = String::from_str(e, "valid");
     let invalid_v = String::from_str(e, "invalid");
-
     match status {
         VCStatus::Invalid => {
             let mut m = Map::new(e);
@@ -557,15 +389,6 @@ fn issuance_status_to_map(e: &Env, status: VCStatus) -> Map<String, String> {
     }
 }
 
-/// Stores a VC payload into a vault (local storage) and optionally charges fees.
-///
-/// Preconditions (must be enforced by caller):
-/// - vault exists and is active
-/// - issuer is authorized for the vault
-/// - issuer has signed if this call path requires it
-///
-/// `fee_override`: If `> 0`, uses that amount directly. If `0`, uses role-based fee
-/// (custom fee for issuer, or standard/early/admin based on configuration), or falls back to global fee.
 fn store_vc_payload(
     e: &Env,
     owner: &Address,
@@ -576,34 +399,16 @@ fn store_vc_payload(
     issuance_contract: Address,
     fee_override: i128,
 ) {
-    // Fee charging (if enabled): transfer from issuer -> fee_dest.
-    // Note: token contract itself will require auth from `issuer_addr` on transfer.
     if storage::read_fee_enabled(e) {
         let fee_token = storage::read_fee_token_contract(e);
         let fee_dest = storage::read_fee_dest(e);
-        
-        // Determine fee amount:
-        // The API always calculates and passes the fee based on the API key role.
-        // If fee_override > 0, use it directly (this is the normal case).
-        // If fee_override == 0, it means admin role or no API key - charge 0.
-        let fee_amount = fee_override;
-
-        // Only charge fee if amount > 0
-        if fee_amount > 0 {
+        if fee_override > 0 {
             e.invoke_contract::<()>(
                 &fee_token,
                 &symbol_short!("transfer"),
-                (issuer_addr.clone(), fee_dest, fee_amount).into_val(e),
+                (issuer_addr.clone(), fee_dest, fee_override).into_val(e),
             );
         }
     }
-
-    verifiable_credential::store_vc(
-        e,
-        owner,
-        vc_id,
-        vc_data,
-        issuance_contract,
-        issuer_did,
-    );
+    vault::store_vc(e, owner, vc_id, vc_data, issuance_contract, issuer_did);
 }
