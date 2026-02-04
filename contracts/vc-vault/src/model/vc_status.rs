@@ -1,6 +1,8 @@
+//! VC status in the issuance registry.
+
 use soroban_sdk::{contracttype, String};
 
-/// Status registry entry for a VC ID.
+/// Status of a VC in the issuance registry.
 #[derive(PartialEq)]
 #[contracttype]
 pub enum VCStatus {

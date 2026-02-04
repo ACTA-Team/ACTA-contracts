@@ -1,13 +1,15 @@
+//! Storage layout and helpers. Instance = global config; persistent = per-owner and per-VC.
+
 use crate::model::{VCStatus, VerifiableCredential};
 use soroban_sdk::{contracttype, Address, Env, Map, String, Vec};
 
-/// TTL extension thresholds and targets (ledger counts).
+/// TTL: extend when remaining < threshold, set to extend_to (ledger counts).
 const INSTANCE_TTL_THRESHOLD: u32 = 2000;
 const INSTANCE_TTL_EXTEND_TO: u32 = 10_000;
 const PERSISTENT_TTL_THRESHOLD: u32 = 1000;
 const PERSISTENT_TTL_EXTEND_TO: u32 = 5_000;
 
-/// Unified storage keys.
+/// Storage keys. Instance = admin, fees. Persistent = vault metadata, VCs, status.
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
@@ -34,12 +36,17 @@ pub enum DataKey {
     LegacyVaultVCs(Address),
 }
 
+/// Legacy revocation record for migration.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LegacyRevocation {
+    /// VC ID.
     pub vc_id: String,
+    /// Revocation date (ISO-8601).
     pub date: String,
 }
+
+// --- Global config (instance) ---
 
 pub fn has_contract_admin(e: &Env) -> bool {
     e.storage().instance().has(&DataKey::ContractAdmin)
@@ -96,13 +103,19 @@ pub fn read_fee_amount(e: &Env) -> i128 {
     e.storage().instance().get(&DataKey::FeeAmount).unwrap()
 }
 
+/// Fee config status returned by fee_config().
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FeeConfig {
+    /// Whether fees are enabled.
     pub enabled: bool,
+    /// Whether token, dest, amount are all set.
     pub configured: bool,
+    /// Token contract address (if configured).
     pub token_contract: Option<Address>,
+    /// Fee destination address (if configured).
     pub fee_dest: Option<Address>,
+    /// Fee amount (if configured).
     pub fee_amount: Option<i128>,
 }
 
@@ -181,6 +194,8 @@ pub fn read_fee_custom(e: &Env, issuer: &Address) -> i128 {
     try_read_fee_custom(e, issuer).unwrap_or_else(|| read_fee_amount(e))
 }
 
+// --- Vault metadata (persistent) ---
+
 pub fn has_vault_admin(e: &Env, owner: &Address) -> bool {
     e.storage().persistent().has(&DataKey::VaultAdmin(owner.clone()))
 }
@@ -221,6 +236,8 @@ pub fn write_vault_revoked(e: &Env, owner: &Address, revoked: &bool) {
         .set(&DataKey::VaultRevoked(owner.clone()), revoked);
 }
 
+// --- Vault issuers (persistent) ---
+
 pub fn read_vault_issuers(e: &Env, owner: &Address) -> Vec<Address> {
     e.storage().persistent().get(&DataKey::VaultIssuers(owner.clone())).unwrap()
 }
@@ -228,6 +245,8 @@ pub fn read_vault_issuers(e: &Env, owner: &Address) -> Vec<Address> {
 pub fn write_vault_issuers(e: &Env, owner: &Address, issuers: &Vec<Address>) {
     e.storage().persistent().set(&DataKey::VaultIssuers(owner.clone()), issuers)
 }
+
+// --- VC payloads (persistent) ---
 
 pub fn write_vault_vc(e: &Env, owner: &Address, vc_id: &String, vc: &VerifiableCredential) {
     e.storage().persistent().set(&DataKey::VaultVC(owner.clone(), vc_id.clone()), vc)
@@ -287,12 +306,16 @@ pub fn read_vc_owner(e: &Env, vc_id: &String) -> Option<Address> {
     e.storage().persistent().get(&DataKey::VCOwner(vc_id.clone()))
 }
 
+// --- TTL extensions ---
+
+/// Extend instance TTL (admin, fees). Call from handlers that touch global state.
 pub fn extend_instance_ttl(e: &Env) {
     e.storage()
         .instance()
         .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
 }
 
+/// Extend TTL of vault keys. Call when reading/writing vault.
 pub fn extend_vault_ttl(e: &Env, owner: &Address) {
     let keys = [
         DataKey::VaultAdmin(owner.clone()),
@@ -310,6 +333,7 @@ pub fn extend_vault_ttl(e: &Env, owner: &Address) {
     }
 }
 
+/// Extend TTL of VC payload, index, status, owner. Call when touching a VC.
 pub fn extend_vc_ttl(e: &Env, owner: &Address, vc_id: &String) {
     let vc_key = DataKey::VaultVC(owner.clone(), vc_id.clone());
     let ids_key = DataKey::VaultVCIds(owner.clone());
@@ -324,6 +348,7 @@ pub fn extend_vc_ttl(e: &Env, owner: &Address, vc_id: &String) {
     }
 }
 
+/// Extend TTL of VC status/owner only. Call from revoke flow.
 pub fn extend_vc_status_ttl(e: &Env, vc_id: &String) {
     for key in [
         DataKey::VCStatus(vc_id.clone()),
@@ -336,6 +361,8 @@ pub fn extend_vc_status_ttl(e: &Env, vc_id: &String) {
         }
     }
 }
+
+// --- Legacy (migration) ---
 
 pub fn read_legacy_issuance_vcs(e: &Env) -> Option<Vec<String>> {
     e.storage().persistent().get(&DataKey::LegacyIssuanceVCs)

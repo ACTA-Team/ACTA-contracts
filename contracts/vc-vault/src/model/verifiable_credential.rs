@@ -1,8 +1,8 @@
+//! Verifiable Credential type stored in vaults.
+
 use soroban_sdk::{contracttype, Address, String};
 
-/// Verifiable Credential stored in a vault.
-///
-/// `data` is expected to be **ciphertext** (encrypted off-chain) or a safe reference.
+/// VC payload stored in a vault. `data` should be ciphertext only (never plaintext PII).
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VerifiableCredential {

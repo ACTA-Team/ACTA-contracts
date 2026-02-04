@@ -1,10 +1,11 @@
-//! Public contract interface.
+//! Public contract interface. All exported functions are defined here.
 
 use soroban_sdk::{Address, BytesN, Env, Map, String, Vec};
 
 use crate::model::VerifiableCredential;
 use crate::storage::FeeConfig;
 
+/// Trait defining all public contract entrypoints.
 #[allow(dead_code)]
 pub trait VcVaultTrait {
     fn initialize(e: Env, contract_admin: Address, default_issuer_did: String);

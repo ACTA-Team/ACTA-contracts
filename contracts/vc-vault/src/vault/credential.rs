@@ -1,7 +1,10 @@
+//! Store VC payload in vault and update index.
+
 use crate::model::VerifiableCredential;
 use crate::storage;
 use soroban_sdk::{Address, Env, String};
 
+/// Write VC to vault and append ID to index.
 pub fn store_vc(
     e: &Env,
     owner: &Address,

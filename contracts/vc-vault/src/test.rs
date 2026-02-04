@@ -1,6 +1,9 @@
+//! Unit tests for VC Vault contract.
+
 use crate::contract::{VcVaultContract, VcVaultContractClient};
 use soroban_sdk::{testutils::Address as _, vec, Address, Env, String};
 
+/// Create env, admin, issuer, contract, and client for tests.
 fn setup() -> (Env, Address, Address, Address, VcVaultContractClient<'static>) {
     let env = Env::default();
     env.mock_all_auths();

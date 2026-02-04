@@ -1,4 +1,4 @@
-//! Shared data types (no storage dependencies).
+//! Shared data types. No storage dependencies; used by storage, vault, issuance.
 
 mod vc_status;
 mod verifiable_credential;

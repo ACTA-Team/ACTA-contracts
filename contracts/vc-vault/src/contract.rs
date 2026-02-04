@@ -1,3 +1,5 @@
+//! Contract implementation: public entrypoints and validation helpers.
+
 use crate::api::VcVaultTrait;
 use crate::error::ContractError;
 use crate::issuance;
@@ -16,12 +18,15 @@ contractmeta!(
     val = "VC Vault: Verifiable Credential storage + issuance status registry",
 );
 
+/// Main contract struct. All public functions are exposed via the trait impl.
 #[allow(dead_code)]
 #[contract]
 pub struct VcVaultContract;
 
 #[contractimpl]
 impl VcVaultTrait for VcVaultContract {
+    // --- Global config ---
+
     fn initialize(e: Env, contract_admin: Address, default_issuer_did: String) {
         contract_admin.require_auth();
         if storage::has_contract_admin(&e) {
@@ -33,12 +38,14 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_instance_ttl(&e);
     }
 
+    /// Set new contract admin. Caller must be current admin.
     fn set_contract_admin(e: Env, new_admin: Address) {
         let _ = validate_contract_admin(&e);
         storage::write_contract_admin(&e, &new_admin);
         storage::extend_instance_ttl(&e);
     }
 
+    /// Configure fee: token, destination, amount. Admin only.
     fn set_fee_config(e: Env, token_contract: Address, fee_dest: Address, fee_amount: i128) {
         validate_contract_admin(&e);
         storage::write_fee_token_contract(&e, &token_contract);
@@ -47,6 +54,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_instance_ttl(&e);
     }
 
+    /// Enable or disable fee charging on issue. Admin only.
     fn set_fee_enabled(e: Env, enabled: bool) {
         validate_contract_admin(&e);
         storage::write_fee_enabled(&e, &enabled);
@@ -97,6 +105,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::read_fee_custom(&e, &issuer)
     }
 
+    /// Upgrade contract WASM. Admin only.
     fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
         validate_contract_admin(&e);
         storage::extend_instance_ttl(&e);
@@ -129,6 +138,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vault_ttl(&e, &owner);
     }
 
+    /// Set vault admin. Current vault admin must sign.
     fn set_vault_admin(e: Env, owner: Address, new_admin: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
@@ -136,6 +146,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vault_ttl(&e, &owner);
     }
 
+    /// Replace full issuer list. Vault admin only.
     fn authorize_issuers(e: Env, owner: Address, issuers: Vec<Address>) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
@@ -143,6 +154,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vault_ttl(&e, &owner);
     }
 
+    /// Add single issuer. Vault admin only.
     fn authorize_issuer(e: Env, owner: Address, issuer_addr: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
@@ -150,6 +162,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vault_ttl(&e, &owner);
     }
 
+    /// Remove issuer from list. Vault admin only.
     fn revoke_issuer(e: Env, owner: Address, issuer_addr: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
@@ -157,6 +170,7 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vault_ttl(&e, &owner);
     }
 
+    /// Revoke vault. Blocks all writes. Vault admin only.
     fn revoke_vault(e: Env, owner: Address) {
         validate_vault_admin(&e, &owner);
         validate_vault_active(&e, &owner);
@@ -164,11 +178,13 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vault_ttl(&e, &owner);
     }
 
+    /// List VC IDs in owner's vault.
     fn list_vc_ids(e: Env, owner: Address) -> Vec<String> {
         storage::extend_vault_ttl(&e, &owner);
         storage::read_vault_vc_ids(&e, &owner)
     }
 
+    /// Get VC payload by ID. Returns None if not found.
     fn get_vc(
         e: Env,
         owner: Address,
@@ -182,6 +198,7 @@ impl VcVaultTrait for VcVaultContract {
         vc
     }
 
+    /// Verify VC status. Returns map with "status" (valid/revoked/invalid) and optionally "since".
     fn verify_vc(e: Env, owner: Address, vc_id: String) -> Map<String, String> {
         storage::extend_vault_ttl(&e, &owner);
         let vc_opt = storage::read_vault_vc(&e, &owner, &vc_id);
@@ -202,6 +219,7 @@ impl VcVaultTrait for VcVaultContract {
         )
     }
 
+    /// Move VC from one vault to another. From-owner must sign. Issuer must be authorized in source.
     fn push(e: Env, from_owner: Address, to_owner: Address, vc_id: String, issuer_addr: Address) {
         validate_vault_active(&e, &from_owner);
         validate_vault_active(&e, &to_owner);
@@ -226,6 +244,9 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vc_ttl(&e, &to_owner, &vc_id);
     }
 
+    // --- Issuance ---
+
+    /// Issue VC: store in vault, set status Valid. Issuer must sign and be authorized.
     fn issue(
         e: Env,
         owner: Address,
@@ -264,6 +285,7 @@ impl VcVaultTrait for VcVaultContract {
         vc_id
     }
 
+    /// Revoke VC. Owner or contract admin must sign.
     fn revoke(e: Env, vc_id: String, date: String) {
         validate_vc_exists(&e, &vc_id);
         match storage::read_vc_owner(&e, &vc_id) {
@@ -276,6 +298,9 @@ impl VcVaultTrait for VcVaultContract {
         storage::extend_vc_status_ttl(&e, &vc_id);
     }
 
+    // --- Migrations ---
+
+    /// Migrate legacy storage. Some(owner) = vault migration; None = issuance registry migration.
     fn migrate(e: Env, owner: Option<Address>) {
         match owner {
             Some(owner) => {
@@ -321,6 +346,9 @@ impl VcVaultTrait for VcVaultContract {
     }
 }
 
+// --- Validation helpers ---
+
+/// Ensure contract admin exists and has signed. Returns admin address.
 fn validate_contract_admin(e: &Env) -> Address {
     if !storage::has_contract_admin(e) {
         panic_with_error!(e, ContractError::NotInitialized)
@@ -330,18 +358,21 @@ fn validate_contract_admin(e: &Env) -> Address {
     admin
 }
 
+/// Ensure vault exists for owner.
 fn validate_vault_initialized(e: &Env, owner: &Address) {
     if !storage::has_vault_admin(e, owner) {
         panic_with_error!(e, ContractError::VaultNotInitialized)
     }
 }
 
+/// Ensure vault exists and caller is vault admin (has signed).
 fn validate_vault_admin(e: &Env, owner: &Address) {
     validate_vault_initialized(e, owner);
     let admin = storage::read_vault_admin(e, owner);
     admin.require_auth();
 }
 
+/// Ensure vault exists and is not revoked.
 fn validate_vault_active(e: &Env, owner: &Address) {
     validate_vault_initialized(e, owner);
     if storage::read_vault_revoked(e, owner) {
@@ -349,6 +380,7 @@ fn validate_vault_active(e: &Env, owner: &Address) {
     }
 }
 
+/// Ensure issuer is in vault's authorized list. No signature check.
 fn validate_issuer_authorized_only(e: &Env, owner: &Address, issuer_addr: &Address) {
     validate_vault_initialized(e, owner);
     let issuers = storage::read_vault_issuers(e, owner);
@@ -357,12 +389,14 @@ fn validate_issuer_authorized_only(e: &Env, owner: &Address, issuer_addr: &Addre
     }
 }
 
+/// Ensure VC exists in status registry (not Invalid).
 fn validate_vc_exists(e: &Env, vc_id: &String) {
     if storage::read_vc_status(e, vc_id) == VCStatus::Invalid {
         panic_with_error!(e, ContractError::VCNotFound)
     }
 }
 
+/// Convert VCStatus to map for verify_vc return value.
 fn issuance_status_to_map(e: &Env, status: VCStatus) -> Map<String, String> {
     let status_k = String::from_str(e, "status");
     let since_k = String::from_str(e, "since");
@@ -389,6 +423,7 @@ fn issuance_status_to_map(e: &Env, status: VCStatus) -> Map<String, String> {
     }
 }
 
+/// Store VC in vault and charge fee if enabled.
 fn store_vc_payload(
     e: &Env,
     owner: &Address,
