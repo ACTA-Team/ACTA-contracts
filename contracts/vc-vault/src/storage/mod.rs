@@ -4,10 +4,12 @@ use crate::model::{VCStatus, VerifiableCredential};
 use soroban_sdk::{contracttype, Address, Env, Map, String, Vec};
 
 /// TTL: extend when remaining < threshold, set to extend_to (ledger counts).
-const INSTANCE_TTL_THRESHOLD: u32 = 2000;
-const INSTANCE_TTL_EXTEND_TO: u32 = 10_000;
-const PERSISTENT_TTL_THRESHOLD: u32 = 1000;
-const PERSISTENT_TTL_EXTEND_TO: u32 = 5_000;
+/// Max per network: ~31_536_000 ledgers (~6 months). Extend to max so credentials
+/// stay accessible as long as possible without access.
+const INSTANCE_TTL_THRESHOLD: u32 = 30_000_000;
+const INSTANCE_TTL_EXTEND_TO: u32 = 31_536_000;
+const PERSISTENT_TTL_THRESHOLD: u32 = 30_000_000;
+const PERSISTENT_TTL_EXTEND_TO: u32 = 31_536_000;
 
 /// Storage keys. Instance = admin, fees. Persistent = vault metadata, VCs, status.
 #[derive(Clone)]
