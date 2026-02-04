@@ -46,6 +46,7 @@ fn test_vault_authorize_and_store_and_list_and_get() {
         &contract_id,
         &issuer,
         &issuer_did,
+        &0_i128,
     );
 
     let ids = client.list_vc_ids(&owner);
@@ -76,6 +77,7 @@ fn test_issue_verify_revoke_flow_local_vault() {
         &contract_id,
         &issuer,
         &issuer_did,
+        &0_i128,
     );
 
     let m = client.verify_vc(&owner, &vc_id);
@@ -114,6 +116,7 @@ fn test_push_moves_between_vaults() {
         &contract_id,
         &issuer,
         &issuer_did,
+        &0_i128,
     );
 
     client.push(&from_owner, &to_owner, &vc_id, &issuer);
